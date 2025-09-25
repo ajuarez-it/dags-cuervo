@@ -1,0 +1,34 @@
+name: Deploy Airflow DAGs to GCS
+
+on:
+  push:
+    branches:
+      - main  # Trigger this workflow on every push to the 'main' branch
+    paths:
+      - 'dags-cuervo/**/*.py' # Only run if a Python file in the 'dags' folder changes
+
+jobs:
+  upload-dags:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+      - name: Deploy DAGs to GCS
+        uses: google-github-actions/upload-cloud-storage@v3
+        with:
+          path: 'dags-cuervo/'
+          destination: 'us-central1-cc-data-analyti-d9b71af5-bucket/dags/'
+          parent: false
+          glob: '**/*.py'
