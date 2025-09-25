@@ -29,12 +29,15 @@ jobs:
         id: changed-files
         run: |
           # Get the list of added and modified Python files
-          files=$(git diff --name-only ${{ github.event.before.sha }} ${{ github.event.after.sha }} | grep '.py$')
+          # Use a more reliable way to get changed files
+          files=$(git diff --name-only ${{ github.event.before.sha }} ${{ github.event.after.sha }} | grep -E '\.py$')
           echo "files=$files" >> $GITHUB_OUTPUT
 
       - name: Deploy only changed DAGs to GCS
         if: steps.changed-files.outputs.files
         run: |
+          # Authenticate to Google Cloud first
+          gcloud auth activate-service-account --key-file="${{ secrets.GOOGLE_CREDENTIALS }}"
           # Loop through the list of changed files and upload each to GCS
           for file in ${{ steps.changed-files.outputs.files }}; do
             gsutil cp "$file" "gs://us-central1-cc-data-analyti-d9b71af5-bucket/dags/"
