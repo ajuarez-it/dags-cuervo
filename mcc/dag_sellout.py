@@ -23,7 +23,7 @@ JOB_NAME = "dbt-cuervo"
 with DAG(
     dag_id="dag_sellout_mcc",
     start_date=datetime(2025, 1, 1),
-    schedule_interval="None",
+    schedule_interval=None,
     catchup=False,
     tags=["MCC", "SELLOUT", "SILVER", "GOLD"],
     description="A DAG to trigger Sellout Workflow with Qlik, BigQuery, and Cloud Run jobs.",
