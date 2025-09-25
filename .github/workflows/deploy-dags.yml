@@ -25,10 +25,17 @@ jobs:
         with:
           credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
 
-      - name: Deploy DAGs to GCS
-        uses: google-github-actions/upload-cloud-storage@v3
-        with:
-          path: './'
-          destination: 'us-central1-cc-data-analyti-d9b71af5-bucket/dags/'
-          parent: false
-          glob: '**/*.py'
+      - name: Get changed files
+        id: changed-files
+        run: |
+          # Get the list of added and modified Python files
+          files=$(git diff --name-only ${{ github.event.before.sha }} ${{ github.event.after.sha }} | grep '.py$')
+          echo "files=$files" >> $GITHUB_OUTPUT
+
+      - name: Deploy only changed DAGs to GCS
+        if: steps.changed-files.outputs.files
+        run: |
+          # Loop through the list of changed files and upload each to GCS
+          for file in ${{ steps.changed-files.outputs.files }}; do
+            gsutil cp "$file" "gs://us-central1-cc-data-analyti-d9b71af5-bucket/dags/"
+          done
