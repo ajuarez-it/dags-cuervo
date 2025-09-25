@@ -28,7 +28,7 @@ jobs:
       - name: Deploy DAGs to GCS
         uses: google-github-actions/upload-cloud-storage@v3
         with:
-          path: 'dags-cuervo/mcc'
+          path: 'mcc'
           destination: 'us-central1-cc-data-analyti-d9b71af5-bucket/dags/'
           parent: false
           glob: '**/*.py'
