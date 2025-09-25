@@ -21,7 +21,7 @@ JOB_NAME = "dbt-cuervo"
 # 2. DAG Definition
 # ---
 with DAG(
-    dag_id="dag_sellout",
+    dag_id="dag_sellout_mcc",
     start_date=datetime(2025, 1, 1),
     schedule_interval="None",
     catchup=False,
