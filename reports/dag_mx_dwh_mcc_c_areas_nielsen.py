@@ -23,7 +23,7 @@ with DAG(
     start_date=datetime(2025, 1, 1),
     schedule_interval=None,
     catchup=False,
-    tags=["CATALOG", "areas_nielsen", "SILVER", "GOLD"],
+    tags=["CATALOG", "AREAS_NIELSEN", "SILVER", "GOLD"],
     description="A DAG to transform data from silver to gold",
 ) as dag:
 
