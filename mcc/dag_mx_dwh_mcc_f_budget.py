@@ -1,0 +1,152 @@
+import os
+from datetime import datetime
+
+from airflow.models.dag import DAG
+from airflow.operators.empty import EmptyOperator # Import EmptyOperator
+from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
+from utils import get_current_filename_base
+
+# ---
+# 1. Environment variables and constants
+# ---
+# It's best practice to store sensitive IDs and configurations in Airflow Variables or a secret backend
+GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "cc-data-analytics-prd")
+GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
+GCP_CONN_ID = "google_cloud_default" # Your Airflow connection ID for Google Cloud
+JOB_NAME = "dbt-cuervo"
+DAG_NAME = get_current_filename_base() # get the filename
+# ---
+# 2. DAG Definition
+# ---
+with DAG(
+    dag_id=DAG_NAME,
+    start_date=datetime(2025, 1, 1),
+    schedule_interval=None,
+    catchup=False,
+    tags=["MCC", "BUDGET", "SILVER", "GOLD"],
+    description="A DAG to trigger Budget Workflow with Qlik, BigQuery, and Cloud Run jobs.",
+) as dag:
+
+    # ---
+    # 3. Task Definitions
+    # ---
+    start = EmptyOperator(task_id="start")
+    # Job 1: 
+    trigger_cloud_run_job_for_silver_budget = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_for_silver_budget",
+        project_id=GCP_PROJECT_ID,
+        region=GCP_REGION,
+        job_name=JOB_NAME, # Name of the Cloud Run Job
+        gcp_conn_id=GCP_CONN_ID,
+        overrides={
+            "container_overrides": [
+                {
+                    "name": JOB_NAME, # Must match the job name
+                    "args": ["run", "--select", "dbt_cuervo.staging.budget"]
+                }
+            ]
+        },
+        doc_md="Triggers the Cloud Run job with overrides for the NA region."
+    )
+
+    # Job 2: 
+    trigger_cloud_run_job_for_gold_budget = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_for_gold_budget",
+        project_id=GCP_PROJECT_ID,
+        region=GCP_REGION,
+        job_name=JOB_NAME,
+        gcp_conn_id=GCP_CONN_ID,
+        overrides={
+            "container_overrides": [
+                {
+                    "name": JOB_NAME,
+                    "args": ["run", "--select", "marts.commercial.f_mcc_budget"]
+                }
+            ]
+        },
+        doc_md="Triggers the Cloud Run job with overrides for gold stage in budget"
+    )
+
+    # Job 3: 
+    trigger_cloud_run_job_test_bronze_budget_1 = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_bronze_budget_1",
+        project_id=GCP_PROJECT_ID,
+        region=GCP_REGION,
+        job_name=JOB_NAME,
+        gcp_conn_id=GCP_CONN_ID,
+        overrides={
+            "container_overrides": [
+                {
+                    "name": JOB_NAME,
+                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcppa001_q0001"]
+                }
+            ]
+        },
+        doc_md="Triggers the Cloud Run job with overrides for testing.",
+    )
+    end = EmptyOperator(task_id="end")
+    # Job 4: 
+    trigger_cloud_run_job_test_bronze_budget_2 = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_bronze_budget_2",
+        project_id=GCP_PROJECT_ID,
+        region=GCP_REGION,
+        job_name=JOB_NAME,
+        gcp_conn_id=GCP_CONN_ID,
+        overrides={
+            "container_overrides": [
+                {
+                    "name": JOB_NAME,
+                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcppa001_q0022"]
+                }
+            ]
+        },
+        doc_md="Triggers the Cloud Run job with overrides for testing."
+    )
+     # Job 5: 
+    trigger_cloud_run_job_test_silver_budget = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_silver_budget",
+        project_id=GCP_PROJECT_ID,
+        region=GCP_REGION,
+        job_name=JOB_NAME,
+        gcp_conn_id=GCP_CONN_ID,
+        overrides={
+            "container_overrides": [
+                {
+                    "name": JOB_NAME,
+                    "args": ["test", "--select", "dbt_cuervo.staging.budget"]
+                }
+            ]
+        },
+        doc_md="Triggers the Cloud Run job with overrides for testing."
+    )
+    end = EmptyOperator(task_id="end")
+     # Job 6: 
+    trigger_cloud_run_job_test_gold_budget = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_gold_budget",
+        project_id=GCP_PROJECT_ID,
+        region=GCP_REGION,
+        job_name=JOB_NAME,
+        gcp_conn_id=GCP_CONN_ID,
+        overrides={
+            "container_overrides": [
+                {
+                    "name": JOB_NAME,
+                    "args": ["test", "--select", "dbt_cuervo.marts.commercial.f_mcc_budget"],
+                }
+            ]
+        },
+        doc_md="Triggers the Cloud Run job for testing gold layer",
+    )
+    # ---
+    # 4. Task Dependencies
+    # ---
+(
+    start
+    >> trigger_cloud_run_job_test_bronze_budget_1
+    >> trigger_cloud_run_job_test_bronze_budget_2
+    >> trigger_cloud_run_job_test_silver_budget
+    >> trigger_cloud_run_job_for_silver_budget
+    >> trigger_cloud_run_job_test_gold_budget
+    >> trigger_cloud_run_job_for_gold_budget
+    >> end
+)
