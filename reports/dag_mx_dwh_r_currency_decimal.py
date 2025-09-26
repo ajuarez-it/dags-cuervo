@@ -37,7 +37,7 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME, # Must match the job name
-                    "args": ["run", "--select", "dbt_cuervo.staging.currency_decimal"],
+                    "args": ["run", "--select", "dbt_cuervo.staging.stg_currency_decimal"],
                 }
             ]
         },
@@ -54,7 +54,7 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["run", "--select", "dbt_cuervo.marts.commercial.f_mcc_currency_decimal"],
+                    "args": ["run", "--select", "dbt_cuervo.reports.r_currency_decimal"],
                 }
             ]
         },
@@ -71,7 +71,7 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcprt001_q0006"],
+                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_tcurx"],
                 }
             ]
         },
@@ -88,7 +88,7 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["test", "--select", "dbt_cuervo.staging.currency_decimal"],
+                    "args": ["test", "--select", "dbt_cuervo.staging.stg_currency_decimal"],
                 }
             ]
         },
@@ -105,7 +105,7 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["test", "--select", "dbt_cuervo.marts.commercial.f_mcc_currency_decimal"],
+                    "args": ["test", "--select", "dbt_cuervo.reports.r_currency_decimal"],
                 }
             ]
         },
