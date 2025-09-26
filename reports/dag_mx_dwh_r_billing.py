@@ -37,7 +37,7 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME, # Must match the job name
-                    "args": ["run", "--select", "dbt_cuervo.staging.billing"],
+                    "args": ["run", "--select", "dbt_cuervo.staging.stg_billing"],
                 }
             ]
         },
@@ -54,15 +54,15 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["run", "--select", "dbt_cuervo.marts.commercial.f_mcc_billing"],
+                    "args": ["run", "--select", "dbt_cuervo.reports.r_billing"],
                 }
             ]
         },
         doc_md="Triggers the Cloud Run job with overrides for gold stage in sellout",
     )
 
-    trigger_cloud_run_job_test_bronze_billing = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_billing",
+    trigger_cloud_run_job_test_bronze_billing_01 = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_bronze_billing_01",
         project_id=GCP_PROJECT_ID,
         region=GCP_REGION,
         job_name=JOB_NAME,
@@ -71,13 +71,48 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcprt001_q0006"],
+                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_AECORS.raw_vbrk"],
                 }
             ]
         },
         doc_md="Triggers the Cloud Run job for testing bronze layer",
     )
-    
+
+    trigger_cloud_run_job_test_bronze_billing_02 = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_bronze_billing_02",
+        project_id=GCP_PROJECT_ID,
+        region=GCP_REGION,
+        job_name=JOB_NAME,
+        gcp_conn_id=GCP_CONN_ID,
+        overrides={
+            "container_overrides": [
+                {
+                    "name": JOB_NAME,
+                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_AECORS.raw_vbrp"],
+                }
+            ]
+        },
+        doc_md="Triggers the Cloud Run job for testing bronze layer",
+    )
+
+    trigger_cloud_run_job_test_bronze_billing_03 = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_bronze_billing_03",
+        project_id=GCP_PROJECT_ID,
+        region=GCP_REGION,
+        job_name=JOB_NAME,
+        gcp_conn_id=GCP_CONN_ID,
+        overrides={
+            "container_overrides": [
+                {
+                    "name": JOB_NAME,
+                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_AECORS.raw_konv"],
+                }
+            ]
+        },
+        doc_md="Triggers the Cloud Run job for testing bronze layer",
+    )
+
+
     trigger_cloud_run_job_test_silver_billing = CloudRunExecuteJobOperator(
         task_id="trigger_cloud_run_job_test_silver_billing",
         project_id=GCP_PROJECT_ID,
@@ -88,7 +123,7 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["test", "--select", "dbt_cuervo.staging.billing"],
+                    "args": ["test", "--select", "dbt_cuervo.staging.stg_billing"],
                 }
             ]
         },
@@ -105,7 +140,7 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["test", "--select", "dbt_cuervo.marts.commercial.f_mcc_billing"],
+                    "args": ["test", "--select", "dbt_cuervo.reports.r_billing"],
                 }
             ]
         },
@@ -119,7 +154,9 @@ with DAG(
     # Defines the execution order of the tasks in the DAG.
 (
     start
-    >> trigger_cloud_run_job_test_bronze_billing
+    >> trigger_cloud_run_job_test_bronze_billing_01
+    >> trigger_cloud_run_job_test_bronze_billing_02
+    >> trigger_cloud_run_job_test_bronze_billing_03
     >> trigger_cloud_run_job_test_silver_billing
     >> trigger_cloud_run_job_for_silver_billing
     >> trigger_cloud_run_job_test_gold_billing
