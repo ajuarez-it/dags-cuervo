@@ -23,14 +23,14 @@ with DAG(
     start_date=datetime(2025, 1, 1),
     schedule_interval=None,
     catchup=False,
-    tags=["CATALOG", "AREAS_NIELSEN", "SILVER", "GOLD"],
+    tags=["CATALOG", "areas_nielsen", "SILVER", "GOLD"],
     description="A DAG to transform data from silver to gold",
 ) as dag:
 
     start = EmptyOperator(task_id="start")
     # Step 1: execute all the transformations from gold to silver 
-    trigger_cloud_run_job_for_silver_sell_out = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_for_silver_sell_out",
+    trigger_cloud_run_job_for_silver_areas_nielsen = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_for_silver_areas_nielsen",
         project_id=GCP_PROJECT_ID,
         region=GCP_REGION,
         job_name=JOB_NAME, # Name of the Cloud Run Job
@@ -39,15 +39,15 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME, # Must match the job name
-                    "args": ["run", "--select", "dbt_cuervo.staging.sell_out"],
+                    "args": ["run", "--select", "dbt_cuervo.staging.requester.std_d_areas_nielsen"],
                 }
             ]
         },
         doc_md="Triggers the Cloud Run job with overrides for the NA region.",
     )
     # Step 2: execute the fact table in gold 
-    trigger_cloud_run_job_for_gold_sell_out = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_for_gold_sell_out",
+    trigger_cloud_run_job_for_gold_areas_nielsen = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_for_gold_areas_nielsen",
         project_id=GCP_PROJECT_ID,
         region=GCP_REGION,
         job_name=JOB_NAME,
@@ -56,15 +56,15 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["run", "--select", "dbt_cuervo.marts.commercial.f_mcc_sell_out"],
+                    "args": ["run", "--select", "dbt_cuervo.GLD_GLOBAL_MASTER_REPORT.c_d_areasnielsen"],
                 }
             ]
         },
         doc_md="Triggers the Cloud Run job with overrides for gold stage in sellout",
     )
 
-    trigger_cloud_run_job_test_bronze_sell_out = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_sell_out",
+    trigger_cloud_run_job_test_bronze_areas_nielsen = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_bronze_areas_nielsen",
         project_id=GCP_PROJECT_ID,
         region=GCP_REGION,
         job_name=JOB_NAME,
@@ -73,15 +73,15 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcprt001_q0006"],
+                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONC_SPO_INT.d_areasnielsen"],
                 }
             ]
         },
         doc_md="Triggers the Cloud Run job for testing bronze layer",
     )
     
-    trigger_cloud_run_job_test_silver_sell_out = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_silver_sell_out",
+    trigger_cloud_run_job_test_silver_areas_nielsen = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_silver_areas_nielsen",
         project_id=GCP_PROJECT_ID,
         region=GCP_REGION,
         job_name=JOB_NAME,
@@ -90,15 +90,15 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["test", "--select", "dbt_cuervo.staging.sell_out"],
+                    "args": ["test", "--select", "dbt_cuervo.staging.requester.std_d_areas_nielsen"],
                 }
             ]
         },
         doc_md="Triggers the Cloud Run job for testing silver layer",
     )
 
-    trigger_cloud_run_job_test_gold_sell_out = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_gold_sell_out",
+    trigger_cloud_run_job_test_gold_areas_nielsen = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_gold_areas_nielsen",
         project_id=GCP_PROJECT_ID,
         region=GCP_REGION,
         job_name=JOB_NAME,
@@ -107,7 +107,7 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["test", "--select", "dbt_cuervo.marts.commercial.f_mcc_sell_out"],
+                    "args": ["test", "--select", "dbt_cuervo.GLD_GLOBAL_MASTER_REPORT.c_d_areasnielsen"],
                 }
             ]
         },
@@ -118,12 +118,13 @@ with DAG(
     # ---
     # 4. Task Dependencies
     # ---
+    # Defines the execution order of the tasks in the DAG.
 (
     start
-    >> trigger_cloud_run_job_test_bronze_sell_out
-    >> trigger_cloud_run_job_test_silver_sell_out
-    >> trigger_cloud_run_job_for_silver_sell_out
-    >> trigger_cloud_run_job_test_gold_sell_out
-    >> trigger_cloud_run_job_for_gold_sell_out
+    >> trigger_cloud_run_job_test_bronze_areas_nielsen
+    >> trigger_cloud_run_job_test_silver_areas_nielsen
+    >> trigger_cloud_run_job_for_silver_areas_nielsen
+    >> trigger_cloud_run_job_test_gold_areas_nielsen
+    >> trigger_cloud_run_job_for_gold_areas_nielsen
     >> end
 )
