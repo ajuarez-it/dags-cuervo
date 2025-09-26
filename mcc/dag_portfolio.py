@@ -19,12 +19,12 @@ JOB_NAME = "dbt-cuervo"
 # 2. DAG Definition
 # ---
 with DAG(
-    dag_id="dag_budget_mcc",
+    dag_id="dag_portfolio_mcc",
     start_date=datetime(2025, 1, 1),
     schedule_interval=None,
     catchup=False,
-    tags=["BATCH", "MCC", "BUDGET", "SILVER", "GOLD"],
-    description="A DAG to trigger Budget Workflow with Qlik, BigQuery, and Cloud Run jobs.",
+    tags=["BATCH", "MCC", "portfolio", "SILVER", "GOLD"],
+    description="A DAG to trigger portfolio Workflow with Qlik, BigQuery, and Cloud Run jobs.",
 ) as dag:
 
     # ---
@@ -32,8 +32,8 @@ with DAG(
     # ---
     start = EmptyOperator(task_id="start")
     # Job 1: 
-    trigger_cloud_run_job_for_silver_budget = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_for_silver_budget",
+    trigger_cloud_run_job_for_silver_portfolio = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_for_silver_portfolio",
         project_id=GCP_PROJECT_ID,
         region=GCP_REGION,
         job_name=JOB_NAME, # Name of the Cloud Run Job
@@ -42,7 +42,7 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME, # Must match the job name
-                    "args": ["run", "--select", "dbt_cuervo.staging.budget"]
+                    "args": ["run", "--select", "dbt_cuervo.staging.portfolio"]
                 }
             ]
         },
@@ -50,8 +50,8 @@ with DAG(
     )
 
     # Job 2: 
-    trigger_cloud_run_job_for_gold_budget = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_for_gold_budget",
+    trigger_cloud_run_job_for_gold_portfolio = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_for_gold_portfolio",
         project_id=GCP_PROJECT_ID,
         region=GCP_REGION,
         job_name=JOB_NAME,
@@ -60,16 +60,16 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["run", "--select", "marts.commercial.f_mcc_budget"]
+                    "args": ["run", "--select", "marts.commercial.f_mcc_portfolio"]
                 }
             ]
         },
-        doc_md="Triggers the Cloud Run job with overrides for gold stage in budget"
+        doc_md="Triggers the Cloud Run job with overrides for gold stage in portfolio"
     )
 
     # Job 3: 
-    trigger_cloud_run_job_test_bronze_budget_1 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_budget_1",
+    trigger_cloud_run_job_test_bronze_portfolio = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_bronze_portfolio",
         project_id=GCP_PROJECT_ID,
         region=GCP_REGION,
         job_name=JOB_NAME,
@@ -78,16 +78,16 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcppa001_q0001"]
+                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcpfi002_q0001"]
                 }
             ]
         },
         doc_md="Triggers the Cloud Run job with overrides for testing.",
     )
     end = EmptyOperator(task_id="end")
-    # Job 4: 
-    trigger_cloud_run_job_test_bronze_budget_2 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_budget_2",
+     # Job 4: 
+    trigger_cloud_run_job_test_silver_portfolio = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_silver_portfolio",
         project_id=GCP_PROJECT_ID,
         region=GCP_REGION,
         job_name=JOB_NAME,
@@ -96,33 +96,16 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcppa001_q0022"]
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job with overrides for testing."
-    )
-     # Job 5: 
-    trigger_cloud_run_job_test_silver_budget = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_silver_budget",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "dbt_cuervo.staging.budget"]
+                    "args": ["test", "--select", "dbt_cuervo.staging.portfolio"]
                 }
             ]
         },
         doc_md="Triggers the Cloud Run job with overrides for testing."
     )
     end = EmptyOperator(task_id="end")
-     # Job 6: 
-    trigger_cloud_run_job_test_gold_budget = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_gold_budget",
+     # Job 5: 
+    trigger_cloud_run_job_test_gold_portfolio = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_gold_portfolio",
         project_id=GCP_PROJECT_ID,
         region=GCP_REGION,
         job_name=JOB_NAME,
@@ -131,7 +114,7 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["test", "--select", "dbt_cuervo.marts.commercial.f_mcc_budget"],
+                    "args": ["test", "--select", "dbt_cuervo.marts.commercial.f_mcc_portfolio"],
                 }
             ]
         },
@@ -144,11 +127,10 @@ with DAG(
     # trigger_qlik_reload >> execute_external_table_query >> 
 (
     start
-    >> trigger_cloud_run_job_test_bronze_budget_1
-    >> trigger_cloud_run_job_test_bronze_budget_2
-    >> trigger_cloud_run_job_test_silver_budget
-    >> trigger_cloud_run_job_for_silver_budget
-    >> trigger_cloud_run_job_test_gold_budget
-    >> trigger_cloud_run_job_for_gold_budget
+    >> trigger_cloud_run_job_test_bronze_portfolio
+    >> trigger_cloud_run_job_test_silver_portfolio
+    >> trigger_cloud_run_job_for_silver_portfolio
+    >> trigger_cloud_run_job_test_gold_portfolio
+    >> trigger_cloud_run_job_for_gold_portfolio
     >> end
 )
