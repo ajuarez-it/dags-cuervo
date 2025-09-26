@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - main
-    # paths:
-    #   - '**.py' # Optional: Only triggers the workflow if a .py file is changed
+    paths:
+      - '**.py' # Optional: Only triggers the workflow if a .py file is changed
 
 jobs:
   upload-dags:
