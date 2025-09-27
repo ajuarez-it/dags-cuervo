@@ -84,7 +84,6 @@ with DAG(
         },
         doc_md="Triggers the Cloud Run job with overrides for testing.",
     )
-    end = EmptyOperator(task_id="end")
     # Job 4: 
     trigger_cloud_run_job_test_bronze_budget_2 = CloudRunExecuteJobOperator(
         task_id="trigger_cloud_run_job_test_bronze_budget_2",
@@ -119,7 +118,6 @@ with DAG(
         },
         doc_md="Triggers the Cloud Run job with overrides for testing."
     )
-    end = EmptyOperator(task_id="end")
      # Job 6: 
     trigger_cloud_run_job_test_gold_budget = CloudRunExecuteJobOperator(
         task_id="trigger_cloud_run_job_test_gold_budget",
@@ -137,6 +135,7 @@ with DAG(
         },
         doc_md="Triggers the Cloud Run job for testing gold layer",
     )
+    end = EmptyOperator(task_id="end")
     # ---
     # 4. Task Dependencies
     # ---
