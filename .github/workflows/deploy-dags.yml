@@ -9,15 +9,11 @@ on:
 
 jobs:
   upload-dags:
+    name: Deploy to PRD
     runs-on: ubuntu-latest
-
     permissions:
       id-token: write
       contents: read # Needs read access to checkout and diff the code
-  deploy_prd:
-    name: Deploy to PRD
-    needs: [upload-dags]
-    runs-on: ubuntu-latest
     environment:
       name: prd
       url: 'http//dev.myapp.com'
