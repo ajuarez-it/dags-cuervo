@@ -23,7 +23,7 @@ with DAG(
     start_date=datetime(2025, 1, 1),
     schedule_interval=None,
     catchup=False,
-    tags=["MCC", "requester", "SILVER", "GOLD"],
+    tags=["MCC", "REQUESTER", "SILVER", "GOLD"],
     description="A DAG to transform data from silver to gold",
 ) as dag:
 
@@ -260,7 +260,7 @@ with DAG(
             "container_overrides": [
                 {
                     "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.layoutmcc"],
+                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONC_SPO_INT.layoutmcc"],
                 }
             ]
         },
@@ -317,6 +317,24 @@ with DAG(
         },
         doc_md="Triggers the Cloud Run job for testing bronze layer",
     )
+
+    trigger_cloud_run_job_test_bronze_requester_16 = CloudRunExecuteJobOperator(
+        task_id="trigger_cloud_run_job_test_bronze_requester_16",
+        project_id=GCP_PROJECT_ID,
+        region=GCP_REGION,
+        job_name=JOB_NAME,
+        gcp_conn_id=GCP_CONN_ID,
+        overrides={
+            "container_overrides": [
+                {
+                    "name": JOB_NAME,
+                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONC_SPO_INT.d_areasnielsen"],
+                }
+            ]
+        },
+        doc_md="Triggers the Cloud Run job for testing bronze layer",
+    )
+
     trigger_cloud_run_job_test_silver_requester = CloudRunExecuteJobOperator(
         task_id="trigger_cloud_run_job_test_silver_requester",
         project_id=GCP_PROJECT_ID,
@@ -373,6 +391,7 @@ with DAG(
     >> trigger_cloud_run_job_test_bronze_requester_13
     >> trigger_cloud_run_job_test_bronze_requester_14
     >> trigger_cloud_run_job_test_bronze_requester_15
+    >> trigger_cloud_run_job_test_bronze_requester_16
     >> trigger_cloud_run_job_test_silver_requester
     >> trigger_cloud_run_job_for_silver_requester
     >> trigger_cloud_run_job_test_gold_requester

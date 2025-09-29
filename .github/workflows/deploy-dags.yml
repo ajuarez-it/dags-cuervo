@@ -9,12 +9,14 @@ on:
 
 jobs:
   upload-dags:
+    name: Deploy to PRD
     runs-on: ubuntu-latest
-
     permissions:
       id-token: write
       contents: read # Needs read access to checkout and diff the code
-
+    environment:
+      name: prd
+      url: 'http//dev.myapp.com'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
