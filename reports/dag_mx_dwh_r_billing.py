@@ -3,7 +3,6 @@ from datetime import datetime
 
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
-# from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteJobOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from utils import get_current_filename_base
 # ---

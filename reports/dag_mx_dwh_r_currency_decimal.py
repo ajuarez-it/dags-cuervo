@@ -3,8 +3,8 @@ from datetime import datetime
 
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
-# from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteJobOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
+from utils import get_current_filename_base
 # ---
 # 1. Environment variables and constants
 # ---
@@ -13,11 +13,13 @@ GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "cc-data-analytics-prd")
 GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 GCP_CONN_ID = "google_cloud_default" # Your Airflow connection ID for Google Cloud
 JOB_NAME = "dbt-cuervo"
+DAG_NAME = get_current_filename_base() # get the filename
+
 # ---
 # 2. DAG Definition
 # ---
 with DAG(
-    dag_id="dag_currency_decimal",
+    dag_id=DAG_NAME,
     start_date=datetime(2025, 1, 1),
     schedule_interval=None,
     catchup=False,
