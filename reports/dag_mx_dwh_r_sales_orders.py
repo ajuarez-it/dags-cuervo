@@ -14,7 +14,7 @@ GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 GCP_CONN_ID = "google_cloud_default" # Your Airflow connection ID for Google Cloud
 JOB_NAME = "dbt-cuervo"
 DAG_NAME = get_current_filename_base() # get the filename
- 
+
 # ---
 # 2. DAG Definition
 # ---
