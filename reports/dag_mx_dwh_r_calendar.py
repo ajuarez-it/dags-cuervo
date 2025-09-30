@@ -18,7 +18,7 @@ DAG_NAME = get_current_filename_base() # get the filename
 # 2. DAG Definition
 # ---
 with DAG(
-    dag_id=DAG_NAME,
+    dag_id = DAG_NAME,
     start_date=datetime(2025, 1, 1),
     schedule_interval=None,
     catchup=False,
