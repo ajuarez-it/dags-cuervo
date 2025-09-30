@@ -4,6 +4,7 @@ from datetime import datetime
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
+from airflow.utils.task_group import TaskGroup
 from utils import get_current_filename_base
 
 # ---
@@ -27,374 +28,124 @@ with DAG(
     description="A DAG to transform data from silver to gold",
 ) as dag:
 
+    default_cloudrun_args = {
+        "project_id": GCP_PROJECT_ID,
+        "region": GCP_REGION,
+        "job_name": JOB_NAME,
+        "gcp_conn_id": GCP_CONN_ID,
+    }
+    bronze_sources = [
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bi0pcustomer",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tcust_group",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tdistr_chan",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tcustomer",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tregion",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tsales_dist",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tsales_grp",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tsales_off",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bictzctetds",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bictzdircom",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bictzsgmntcts",
+    "dbt_cuervo.BRZ_MX_ONC_SPO_INT.layoutmcc",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bi0tcust_grp2",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bi0tcust_grp5",
+    "dbt_cuervo.BRZ_MX_ONC_SPO_INT.d01_2_solicitante_dummie",
+    "dbt_cuervo.BRZ_MX_ONC_SPO_INT.d_areasnielsen",
+    ]
+
     start = EmptyOperator(task_id="start")
-    # Step 1: execute all the transformations from gold to silver 
-    trigger_cloud_run_job_for_silver_requester = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_for_silver_requester",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME, # Name of the Cloud Run Job
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME, # Must match the job name
-                    "args": ["run", "--select", "dbt_cuervo.staging.requester"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job with overrides for the NA region.",
-    )
-    # Step 2: execute the fact table in gold 
-    trigger_cloud_run_job_for_gold_requester = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_for_gold_requester",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["run", "--select", "dbt_cuervo.marts.commercial.d_mcc_requester"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job with overrides for gold stage in sellout",
-    )
 
-    trigger_cloud_run_job_test_bronze_requester_01 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_01",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bi0pcustomer"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
+    with TaskGroup("TG_bronze") as TG_bronze:
+        with TaskGroup("tests") as bronze_tests:
+            prev_task = None
+            for idx, source in enumerate(bronze_sources, start=1):
+                task = CloudRunExecuteJobOperator(
+                    task_id=f"trigger_cloud_run_job_test_bronze_requester_{idx:02d}",
+                    overrides={
+                        "container_overrides": [
+                            {
+                                "name": JOB_NAME,
+                                "args": ["test", "--select", f"source:{source}"],
+                            }
+                        ]
+                    },
+                    doc_md=f"Triggers the Cloud Run job for testing bronze",
+                    **default_cloudrun_args,
+                )
 
-    trigger_cloud_run_job_test_bronze_requester_02 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_02",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tcust_group"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
+                
+                if prev_task:
+                    prev_task >> task
+                prev_task = task
+    bronze_tests
+ 
+    with TaskGroup("TG_silver") as TG_silver:
+        with TaskGroup("tests") as silver_tests:
+                trigger_cloud_run_job_test_silver_requester = CloudRunExecuteJobOperator(
+                    task_id="trigger_cloud_run_job_test_silver_requester",
+                    overrides={
+                        "container_overrides": [
+                            {
+                                "name": JOB_NAME,
+                                "args": ["test", "--select", "dbt_cuervo.staging.requester"],
+                            }
+                        ]
+                    },
+                    doc_md="Triggers the Cloud Run job for testing silver layer",
+                    **default_cloudrun_args,
+                )
 
-    trigger_cloud_run_job_test_bronze_requester_03 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_03",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tcustomer"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
+        with TaskGroup("runs") as silver_run:
+                trigger_cloud_run_job_for_silver_requester = CloudRunExecuteJobOperator(
+                    task_id="trigger_cloud_run_job_for_silver_requester",
+                    overrides={
+                        "container_overrides": [
+                            {
+                                "name": JOB_NAME,
+                                "args": ["run", "--select", "dbt_cuervo.staging.requester"],
+                            }
+                        ]
+                    },
+                    doc_md="Triggers the Cloud Run job with overrides for the NA region.",
+                    **default_cloudrun_args,
+                )
+        trigger_cloud_run_job_test_silver_requester >> trigger_cloud_run_job_for_silver_requester
+    silver_tests >> silver_run
 
-    trigger_cloud_run_job_test_bronze_requester_04 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_04",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tdistr_chan"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
+    with TaskGroup("TG_gold") as TG_gold:
+        with TaskGroup("tests") as gold_tests:
+                trigger_cloud_run_job_test_gold_requester = CloudRunExecuteJobOperator(
+                    task_id="trigger_cloud_run_job_test_gold_requester",
+                    overrides={
+                        "container_overrides": [
+                            {
+                                "name": JOB_NAME,
+                                "args": ["test", "--select", "dbt_cuervo.marts.commercial.d_mcc_requester"],
+                            }
+                        ]
+                    },
+                    doc_md="Triggers the Cloud Run job for testing gold layer",
+                    **default_cloudrun_args,
+                )
 
-    trigger_cloud_run_job_test_bronze_requester_05 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_05",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tregion"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
+        with TaskGroup("runs") as gold_run:
+                trigger_cloud_run_job_for_gold_requester = CloudRunExecuteJobOperator(
+                    task_id="trigger_cloud_run_job_for_gold_requester",
+                    overrides={
+                        "container_overrides": [
+                            {
+                                "name": JOB_NAME,
+                                "args": ["run", "--select", "dbt_cuervo.marts.commercial.d_mcc_requester"],
+                            }
+                        ]
+                    },
+                    doc_md="Triggers the Cloud Run job with overrides for gold stage in requester",
+                    **default_cloudrun_args,
+                )
+        trigger_cloud_run_job_test_gold_requester >> trigger_cloud_run_job_for_gold_requester
+    gold_tests >> gold_run
 
-    trigger_cloud_run_job_test_bronze_requester_06 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_06",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tsales_dist"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
-
-    trigger_cloud_run_job_test_bronze_requester_07 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_07",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tsales_grp"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
-
-    trigger_cloud_run_job_test_bronze_requester_08 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_08",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tsales_off"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
-
-    trigger_cloud_run_job_test_bronze_requester_09 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_09",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bictzctetds"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
-
-    trigger_cloud_run_job_test_bronze_requester_10 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_10",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bictzdircom"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
-
-    trigger_cloud_run_job_test_bronze_requester_11 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_11",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bictzsgmntcts"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
-
-    trigger_cloud_run_job_test_bronze_requester_12 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_12",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONC_SPO_INT.layoutmcc"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
-   
-    trigger_cloud_run_job_test_bronze_requester_13 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_13",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bi0tcust_grp2"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
-
-    trigger_cloud_run_job_test_bronze_requester_14 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_14",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bi0tcust_grp5"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
-
-    trigger_cloud_run_job_test_bronze_requester_15 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_15",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONC_SPO_INT.d01_2_solicitante_dummie"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
-
-    trigger_cloud_run_job_test_bronze_requester_16 = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_bronze_requester_16",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONC_SPO_INT.d_areasnielsen"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing bronze layer",
-    )
-
-    trigger_cloud_run_job_test_silver_requester = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_silver_requester",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "dbt_cuervo.staging.requester"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing silver layer",
-    )
-
-    trigger_cloud_run_job_test_gold_requester = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_gold_requester",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "dbt_cuervo.marts.commercial.d_mcc_requester"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing gold layer",
-    )
     end = EmptyOperator(task_id="end")
 
-    # ---
-    # 4. Task Dependencies
-    # ---
-    # Defines the execution order of the tasks in the DAG.
-(
-    start
-    >> trigger_cloud_run_job_test_bronze_requester_01
-    >> trigger_cloud_run_job_test_bronze_requester_02
-    >> trigger_cloud_run_job_test_bronze_requester_03
-    >> trigger_cloud_run_job_test_bronze_requester_04
-    >> trigger_cloud_run_job_test_bronze_requester_05
-    >> trigger_cloud_run_job_test_bronze_requester_06
-    >> trigger_cloud_run_job_test_bronze_requester_07
-    >> trigger_cloud_run_job_test_bronze_requester_08
-    >> trigger_cloud_run_job_test_bronze_requester_09
-    >> trigger_cloud_run_job_test_bronze_requester_10
-    >> trigger_cloud_run_job_test_bronze_requester_11
-    >> trigger_cloud_run_job_test_bronze_requester_12
-    >> trigger_cloud_run_job_test_bronze_requester_13
-    >> trigger_cloud_run_job_test_bronze_requester_14
-    >> trigger_cloud_run_job_test_bronze_requester_15
-    >> trigger_cloud_run_job_test_bronze_requester_16
-    >> trigger_cloud_run_job_test_silver_requester
-    >> trigger_cloud_run_job_for_silver_requester
-    >> trigger_cloud_run_job_test_gold_requester
-    >> trigger_cloud_run_job_for_gold_requester
-    >> end
-)
+
+start >> TG_bronze >> TG_silver >> TG_gold >> end

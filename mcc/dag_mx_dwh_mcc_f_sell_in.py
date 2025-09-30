@@ -90,8 +90,6 @@ with DAG(
                 >> trigger_cloud_run_job_test_gold_sell_in
             )
         with TaskGroup("runs") as sell_in_run:
-            r1 = EmptyOperator(task_id="for_silver_sell_in")
-            r2 = EmptyOperator(task_id="for_gold_sell_in")
             # Step 1: execute all the transformations from gold to silver 
             trigger_cloud_run_job_for_silver_sell_in = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_for_silver_sell_in",
