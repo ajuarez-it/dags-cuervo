@@ -1,23 +1,23 @@
-name: Deploy Modified Airflow DAGs to GCS (PRD)
+name: Deploy Modified Airflow DAGs to GCS (QA)
 
 on:
   push:
     branches:
-      - main
+      - qa
     pull_request:
-      - main
+      - qa
     paths:
       - '**.py' # Optional: Only triggers the workflow if a .py file is changed
 
 jobs:
   upload-dags:
-    name: Deploy to PRD
+    name: Deploy to QA
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read # Needs read access to checkout and diff the code
     environment:
-      name: prd
+      name: qa
       url: 'http//dev.myapp.com'
     steps:
       - name: Checkout repository
