@@ -442,7 +442,7 @@ with DAG(
             )
 
             trigger_cloud_run_job_test_bronze_sales_orders_04 = CloudRunExecuteJobOperator(
-                task_id="test bronze",
+                task_id="trigger_cloud_run_job_test_bronze_sales_orders_04",
                 overrides={
                     "container_overrides": [
                         {
