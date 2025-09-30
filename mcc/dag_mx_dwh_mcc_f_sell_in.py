@@ -552,10 +552,6 @@ with DAG(
             # Step 2: execute the fact table in gold 
             trigger_cloud_run_job_for_gold_sales_orders = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_for_gold_sales_orders",
-                project_id=GCP_PROJECT_ID,
-                region=GCP_REGION,
-                job_name=JOB_NAME,
-                gcp_conn_id=GCP_CONN_ID,
                 overrides={
                     "container_overrides": [
                         {
