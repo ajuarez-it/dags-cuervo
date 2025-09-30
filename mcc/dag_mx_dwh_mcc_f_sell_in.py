@@ -42,30 +42,170 @@ with DAG(
     # ---------------- SELL_IN ----------------
     with TaskGroup("TG_sell_in") as TG_sell_in:
         with TaskGroup("tests") as sell_in_tests:
-            t1 = EmptyOperator(task_id="test_bronze_sell_in")
-            t2 = EmptyOperator(task_id="test_silver_sell_in")
-            t3 = EmptyOperator(task_id="test_gold_sell_in")
-            t1 >> t2 >> t3
+            trigger_cloud_run_job_test_bronze_sell_in = CloudRunExecuteJobOperator(
+                task_id="trigger_cloud_run_job_test_bronze_sell_in",
+                overrides={
+                    "container_overrides": [
+                        {
+                            "name": JOB_NAME,
+                            "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcppa001_q0011"],
+                        }
+                    ]
+                },
+                doc_md="Triggers the Cloud Run job for testing bronze layer",
+                **default_cloudrun_args,
+                
+            )
+            
+            trigger_cloud_run_job_test_silver_sell_in = CloudRunExecuteJobOperator(
+                task_id="trigger_cloud_run_job_test_silver_sell_in",
+                overrides={
+                    "container_overrides": [
+                        {
+                            "name": JOB_NAME,
+                            "args": ["test", "--select", "dbt_cuervo.staging.sell_in"],
+                        }
+                    ]
+                },
+                doc_md="Triggers the Cloud Run job for testing silver layer",
+                **default_cloudrun_args,
+            )
 
-        with TaskGroup("run") as sell_in_run:
+            trigger_cloud_run_job_test_gold_sell_in = CloudRunExecuteJobOperator(
+                task_id="trigger_cloud_run_job_test_gold_sell_in",
+                overrides={
+                    "container_overrides": [
+                        {
+                            "name": JOB_NAME,
+                            "args": ["test", "--select", "dbt_cuervo.marts.commercial.f_mcc_sell_in"],
+                        }
+                    ]
+                },
+                doc_md="Triggers the Cloud Run job for testing gold layer",
+                **default_cloudrun_args,
+            )
+            (
+                   trigger_cloud_run_job_test_bronze_sell_in
+                >> trigger_cloud_run_job_test_silver_sell_in
+                >> trigger_cloud_run_job_test_gold_sell_in
+            )
+        with TaskGroup("runs") as sell_in_run:
             r1 = EmptyOperator(task_id="for_silver_sell_in")
             r2 = EmptyOperator(task_id="for_gold_sell_in")
-            r1 >> r2
+            # Step 1: execute all the transformations from gold to silver 
+            trigger_cloud_run_job_for_silver_sell_in = CloudRunExecuteJobOperator(
+                task_id="trigger_cloud_run_job_for_silver_sell_in",
+                overrides={
+                    "container_overrides": [
+                        {
+                            "name": JOB_NAME, # Must match the job name
+                            "args": ["run", "--select", "dbt_cuervo.staging.sell_in"],
+                        }
+                    ]
+                },
+                doc_md="Triggers the Cloud Run job with overrides for the NA region.",
+                **default_cloudrun_args,
+            )
+            # Step 2: execute the fact table in gold 
+            trigger_cloud_run_job_for_gold_sell_in = CloudRunExecuteJobOperator(
+                task_id="trigger_cloud_run_job_for_gold_sell_in",
+                overrides={
+                    "container_overrides": [
+                        {
+                            "name": JOB_NAME,
+                            "args": ["run", "--select", "dbt_cuervo.marts.commercial.f_mcc_sell_in"],
+                        }
+                    ]
+                },
+                doc_md="Triggers the Cloud Run job with overrides for gold stage in sellout",
+                **default_cloudrun_args,
+            )
+            (
+               trigger_cloud_run_job_for_silver_sell_in
+            >> trigger_cloud_run_job_for_gold_sell_in
+            )
 
         sell_in_tests >> sell_in_run
 
     # ---------------- CURRENCY_DECIMAL ----------------
     with TaskGroup("TG_currency_decimal") as TG_currency_decimal:
         with TaskGroup("tests") as currency_tests:
-            t1 = EmptyOperator(task_id="test_bronze_currency_decimal")
-            t2 = EmptyOperator(task_id="test_silver_currency_decimal")
-            t3 = EmptyOperator(task_id="test_gold_currency_decimal")
-            t1 >> t2 >> t3
+            trigger_cloud_run_job_test_bronze_currency_decimal = CloudRunExecuteJobOperator(
+                task_id="trigger_cloud_run_job_test_bronze_currency_decimal",
+                overrides={
+                    "container_overrides": [
+                        {
+                            "name": JOB_NAME,
+                            "args": ["test", "--select", "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_tcurx"],
+                        }
+                    ]
+                },
+                doc_md="Triggers the Cloud Run job for testing bronze layer",
+                **default_cloudrun_args,
+            )
+            
+            trigger_cloud_run_job_test_silver_currency_decimal = CloudRunExecuteJobOperator(
+                task_id="trigger_cloud_run_job_test_silver_currency_decimal",
+                overrides={
+                    "container_overrides": [
+                        {
+                            "name": JOB_NAME,
+                            "args": ["test", "--select", "dbt_cuervo.staging.stg_currency_decimal"],
+                        }
+                    ]
+                },
+                doc_md="Triggers the Cloud Run job for testing silver layer",
+                **default_cloudrun_args,
+            )
 
-        with TaskGroup("run") as currency_run:
-            r1 = EmptyOperator(task_id="for_silver_currency_decimal")
-            r2 = EmptyOperator(task_id="for_gold_currency_decimal")
-            r1 >> r2
+            trigger_cloud_run_job_test_gold_currency_decimal = CloudRunExecuteJobOperator(
+                task_id="trigger_cloud_run_job_test_gold_currency_decimal",
+                overrides={
+                    "container_overrides": [
+                        {
+                            "name": JOB_NAME,
+                            "args": ["test", "--select", "dbt_cuervo.reports.r_currency_decimal"],
+                        }
+                    ]
+                },
+                doc_md="Triggers the Cloud Run job for testing gold layer",
+                **default_cloudrun_args,
+            )
+            (
+                   trigger_cloud_run_job_test_bronze_currency_decimal
+                >> trigger_cloud_run_job_test_silver_currency_decimal
+                >> trigger_cloud_run_job_test_gold_currency_decimal
+            )
+
+        with TaskGroup("runs") as currency_run:
+            trigger_cloud_run_job_for_silver_currency_decimal = CloudRunExecuteJobOperator(
+                task_id="trigger_cloud_run_job_for_silver_currency_decimal",
+                overrides={
+                    "container_overrides": [
+                        {
+                            "name": JOB_NAME, # Must match the job name
+                            "args": ["run", "--select", "dbt_cuervo.staging.stg_currency_decimal"],
+                        }
+                    ]
+                },
+                doc_md="Triggers the Cloud Run job with overrides for the NA region.",
+                **default_cloudrun_args,
+            )
+            # Step 2: execute the fact table in gold 
+            trigger_cloud_run_job_for_gold_currency_decimal = CloudRunExecuteJobOperator(
+                task_id="trigger_cloud_run_job_for_gold_currency_decimal",
+                overrides={
+                    "container_overrides": [
+                        {
+                            "name": JOB_NAME,
+                            "args": ["run", "--select", "dbt_cuervo.reports.r_currency_decimal"],
+                        }
+                    ]
+                },
+                doc_md="Triggers the Cloud Run job with overrides for gold stage in sellout",
+                **default_cloudrun_args,
+            )
+            trigger_cloud_run_job_for_silver_currency_decimal >> trigger_cloud_run_job_for_gold_currency_decimal
 
         currency_tests >> currency_run
 
@@ -302,7 +442,7 @@ with DAG(
             )
 
             trigger_cloud_run_job_test_bronze_sales_orders_04 = CloudRunExecuteJobOperator(
-                task_id="trigger_cloud_run_job_test_bronze_sales_orders_04",
+                task_id="test bronze",
                 overrides={
                     "container_overrides": [
                         {
@@ -330,6 +470,7 @@ with DAG(
             )
 
             trigger_cloud_run_job_test_bronze_sales_orders_06 = CloudRunExecuteJobOperator(
+                task_id="trigger_cloud_run_job_test_bronze_sales_orders_06",
                 overrides={
                     "container_overrides": [
                         {
@@ -394,7 +535,7 @@ with DAG(
                 >> trigger_cloud_run_job_test_gold_sales_orders
             )
 
-        with TaskGroup("run") as sales_orders_run:
+        with TaskGroup("runs") as sales_orders_run:
             trigger_cloud_run_job_for_silver_sales_orders = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_for_silver_sales_orders",
                 overrides={
