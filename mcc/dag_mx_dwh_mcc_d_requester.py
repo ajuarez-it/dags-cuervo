@@ -106,7 +106,7 @@ with DAG(
                             }
                         ]
                     },
-                    doc_md="Triggers the Cloud Run job with overrides for the NA region.",
+                    doc_md="Triggers the Cloud Run job for running silver layer",
                     **default_cloudrun_args,
                 )
         trigger_cloud_run_job_test_silver_requester >> trigger_cloud_run_job_for_silver_requester
@@ -139,7 +139,7 @@ with DAG(
                             }
                         ]
                     },
-                    doc_md="Triggers the Cloud Run job with overrides for gold stage in requester",
+                    doc_md="Triggers the Cloud Run job for running gold layer",
                     **default_cloudrun_args,
                 )
         trigger_cloud_run_job_test_gold_requester >> trigger_cloud_run_job_for_gold_requester
