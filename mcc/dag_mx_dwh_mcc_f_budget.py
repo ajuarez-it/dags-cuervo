@@ -1,12 +1,10 @@
 import os
 from datetime import datetime
-
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
 from utils import get_current_filename_base
-
 # ---
 # 1. Environment variables and constants
 # ---
@@ -40,9 +38,8 @@ with DAG(
     "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcppa001_q0001",
     "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcppa001_q0022"
     ]
-
     start = EmptyOperator(task_id="start")
-
+    end = EmptyOperator(task_id="end")
     with TaskGroup("TG_bronze") as TG_bronze:
         with TaskGroup("tests") as bronze_tests:
             prev_task = None
@@ -97,7 +94,6 @@ with DAG(
                 )
         trigger_cloud_run_job_test_silver_budget >> trigger_cloud_run_job_for_silver_budget
     silver_test >> silver_run
-
     with TaskGroup("TG_gold") as TG_gold:
         with TaskGroup("test") as gold_test:
                 trigger_cloud_run_job_test_gold_budget = CloudRunExecuteJobOperator(
@@ -129,7 +125,4 @@ with DAG(
                 )
         trigger_cloud_run_job_test_gold_budget >> trigger_cloud_run_job_for_gold_budget
     gold_test >> gold_run
-
-    end = EmptyOperator(task_id="end")
-
 start >> TG_bronze >> TG_silver >> TG_gold >> end

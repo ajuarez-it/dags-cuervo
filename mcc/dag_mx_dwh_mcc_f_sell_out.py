@@ -37,6 +37,7 @@ with DAG(
     # 3. Task Definitions
     # ---
     start = EmptyOperator(task_id="start")
+    end = EmptyOperator(task_id="end")
     TG_bronze = CloudRunExecuteJobOperator(
         task_id="trigger_cloud_run_job_test_bronze_sell_out",
         overrides={
@@ -81,7 +82,6 @@ with DAG(
                 )
         trigger_cloud_run_job_test_silver_sell_out >> trigger_cloud_run_job_for_silver_sell_out
     silver_test >> silver_run
-
     with TaskGroup("TG_gold") as TG_gold:
         with TaskGroup("test") as gold_test:
                 trigger_cloud_run_job_test_gold_sell_out = CloudRunExecuteJobOperator(
@@ -113,7 +113,4 @@ with DAG(
                 )
         trigger_cloud_run_job_test_gold_sell_out >> trigger_cloud_run_job_for_gold_sell_out
     gold_test >> gold_run
-
-    end = EmptyOperator(task_id="end")
-
 start >> TG_bronze >> TG_silver >> TG_gold >> end
