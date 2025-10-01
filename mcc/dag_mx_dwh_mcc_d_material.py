@@ -1,12 +1,10 @@
 import os
 from datetime import datetime
-
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
 from utils import get_current_filename_base
-
 # ---
 # 1. Environment variables and constants
 # ---
@@ -27,7 +25,6 @@ with DAG(
     tags=["MCC", "MATERIAL", "SILVER", "GOLD"],
     description="A DAG to transform data from silver to gold",
 ) as dag:
-
     default_cloudrun_args = {
         "project_id": GCP_PROJECT_ID,
         "region": GCP_REGION,
@@ -47,9 +44,8 @@ with DAG(
         "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_tzmm_zcatg",
         "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bi0pmaterial"
     ]
-
     start = EmptyOperator(task_id="start")
-
+    end = EmptyOperator(task_id="end")
     with TaskGroup("TG_bronze") as TG_bronze:
         with TaskGroup("tests") as bronze_tests:
             prev_task = None
@@ -73,7 +69,6 @@ with DAG(
                     prev_task >> task
                 prev_task = task
     bronze_tests
- 
     with TaskGroup("TG_silver") as TG_silver:
         with TaskGroup("tests") as silver_tests:
                 trigger_cloud_run_job_test_silver_material = CloudRunExecuteJobOperator(
@@ -89,7 +84,6 @@ with DAG(
                     doc_md="Triggers the Cloud Run job for testing silver layer",
                     **default_cloudrun_args,
                 )
-
         with TaskGroup("runs") as silver_run:
                 trigger_cloud_run_job_for_silver_material = CloudRunExecuteJobOperator(
                     task_id="trigger_cloud_run_job_for_silver_material",
@@ -106,7 +100,6 @@ with DAG(
                 )
         trigger_cloud_run_job_test_silver_material >> trigger_cloud_run_job_for_silver_material
     silver_tests >> silver_run
-
     with TaskGroup("TG_gold") as TG_gold:
         with TaskGroup("tests") as gold_tests:
                 trigger_cloud_run_job_test_gold_material = CloudRunExecuteJobOperator(
@@ -122,7 +115,6 @@ with DAG(
                     doc_md="Triggers the Cloud Run job for testing gold layer",
                     **default_cloudrun_args,
                 )
-
         with TaskGroup("runs") as gold_run:
                 trigger_cloud_run_job_for_gold_material = CloudRunExecuteJobOperator(
                     task_id="trigger_cloud_run_job_for_gold_material",
@@ -139,8 +131,4 @@ with DAG(
                 )
         trigger_cloud_run_job_test_gold_material >> trigger_cloud_run_job_for_gold_material
     gold_tests >> gold_run
-
-    end = EmptyOperator(task_id="end")
-
-
 start >> TG_bronze >> TG_silver >> TG_gold >> end
