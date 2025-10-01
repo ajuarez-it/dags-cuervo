@@ -1,9 +1,9 @@
 import os
 from datetime import datetime
-
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
+from airflow.utils.task_group import TaskGroup
 from utils import get_current_filename_base
 # ---
 # 1. Environment variables and constants
@@ -14,99 +14,88 @@ GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 GCP_CONN_ID = "google_cloud_default" # Your Airflow connection ID for Google Cloud
 JOB_NAME = "dbt-cuervo"
 DAG_NAME = get_current_filename_base() # get the filename
-
 # ---
 # 2. DAG Definition
 # ---
 with DAG(
-    dag_id = DAG_NAME,
+    dag_id=DAG_NAME,
     start_date=datetime(2025, 1, 1),
     schedule_interval=None,
     catchup=False,
-    tags=["REPORT", "CALENDAR", "SILVER", "GOLD"],
-    description="A DAG to transform data from silver to gold",
+    tags=["MCC", "CALENDAR", "SILVER", "GOLD"],
+    description="A DAG to trigger calendar Workflow with BigQuery, and Cloud Run jobs.",
 ) as dag:
-
+    default_cloudrun_args = {
+        "project_id": GCP_PROJECT_ID,
+        "region": GCP_REGION,
+        "job_name": JOB_NAME,
+        "gcp_conn_id": GCP_CONN_ID,
+    }
+    # ---
+    # 3. Task Definitions
+    # ---
     start = EmptyOperator(task_id="start")
-    # Step 1: execute all the transformations from gold to silver 
-    trigger_cloud_run_job_for_silver_calendar = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_for_silver_calendar",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME, # Name of the Cloud Run Job
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME, # Must match the job name
-                    "args": ["run", "--select", "dbt_cuervo.staging.reports.stg_calendar"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job with overrides for the NA region.",
-    )
-    # Step 2: execute the fact table in gold 
-    trigger_cloud_run_job_for_gold_calendar = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_for_gold_calendar",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["run", "--select", "dbt_cuervo.reports.r_calendar"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job with overrides for gold stage in sellout",
-    )
-    
-    trigger_cloud_run_job_test_silver_calendar = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_silver_calendar",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "dbt_cuervo.staging.reports.stg_calendar"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing silver layer",
-    )
-
-    trigger_cloud_run_job_test_gold_calendar = CloudRunExecuteJobOperator(
-        task_id="trigger_cloud_run_job_test_gold_calendar",
-        project_id=GCP_PROJECT_ID,
-        region=GCP_REGION,
-        job_name=JOB_NAME,
-        gcp_conn_id=GCP_CONN_ID,
-        overrides={
-            "container_overrides": [
-                {
-                    "name": JOB_NAME,
-                    "args": ["test", "--select", "dbt_cuervo.reports.r_calendar"],
-                }
-            ]
-        },
-        doc_md="Triggers the Cloud Run job for testing gold layer",
-    )
     end = EmptyOperator(task_id="end")
-
-    # ---
-    # 4. Task Dependencies
-    # ---
-    # Defines the execution order of the tasks in the DAG.
-(
-    start
-    >> trigger_cloud_run_job_test_silver_calendar
-    >> trigger_cloud_run_job_for_silver_calendar
-    >> trigger_cloud_run_job_test_gold_calendar
-    >> trigger_cloud_run_job_for_gold_calendar
-    >> end
-)
+    with TaskGroup("TG_silver") as TG_silver:
+        with TaskGroup("test") as silver_test:
+                trigger_cloud_run_job_test_silver_calendar = CloudRunExecuteJobOperator(
+                    task_id="trigger_cloud_run_job_test_silver_calendar",
+                    overrides={
+                        "container_overrides": [
+                            {
+                                "name": JOB_NAME, # Must match the job name
+                                "args": ["test", "--select", "dbt_cuervo.staging.calendar"]
+                            }
+                        ]
+                    },
+                    doc_md="Triggers the Cloud Run job for testing silver layer"
+                    **default_cloudrun_args,
+                )
+        with TaskGroup("run") as silver_run:
+                trigger_cloud_run_job_for_silver_calendar = CloudRunExecuteJobOperator(
+                    task_id="trigger_cloud_run_job_for_silver_calendar",
+                    overrides={
+                        "container_overrides": [
+                            {
+                                "name": JOB_NAME,
+                                "args": ["run", "--select", "dbt_cuervo.staging.calendar"],
+                            }
+                        ]
+                    },
+                    doc_md="Triggers the Cloud Run job for running silver layer",
+                    **default_cloudrun_args,
+                )
+        trigger_cloud_run_job_test_silver_calendar >> trigger_cloud_run_job_for_silver_calendar
+    silver_test >> silver_run
+    with TaskGroup("TG_gold") as TG_gold:
+        with TaskGroup("test") as gold_test:
+                trigger_cloud_run_job_test_gold_calendar = CloudRunExecuteJobOperator(
+                    task_id="trigger_cloud_run_job_test_gold_calendar",
+                    overrides={
+                        "container_overrides": [
+                            {
+                                "name": JOB_NAME, # Must match the job name
+                                "args": ["test", "--select", "dbt_cuervo.GLD_GLOBAL_MASTER_REPORT.r_calendar"]
+                            }
+                        ]
+                    },
+                    doc_md="Triggers the Cloud Run job for testing gold layer"
+                    **default_cloudrun_args,
+                )
+        with TaskGroup("run") as gold_run:
+                trigger_cloud_run_job_for_gold_calendar = CloudRunExecuteJobOperator(
+                    task_id="trigger_cloud_run_job_for_gold_calendar",
+                    overrides={
+                        "container_overrides": [
+                            {
+                                "name": JOB_NAME,
+                                "args": ["run", "--select", "dbt_cuervo.GLD_GLOBAL_MASTER_REPORT.r_calendar"],
+                            }
+                        ]
+                    },
+                    doc_md="Triggers the Cloud Run job for running gold layer",
+                    **default_cloudrun_args,
+                )
+        trigger_cloud_run_job_test_gold_calendar >> trigger_cloud_run_job_for_gold_calendar
+    gold_test >> gold_run
+start >> TG_silver >> TG_gold >> end
