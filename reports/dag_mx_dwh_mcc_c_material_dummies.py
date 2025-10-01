@@ -62,8 +62,8 @@ with DAG(
     bronze_tests
     with TaskGroup("TG_silver") as TG_silver:
         with TaskGroup("test") as silver_test:
-                trigger_cloud_run_job_test_silver_MATERIAL_DUMMIES = CloudRunExecuteJobOperator(
-                    task_id="trigger_cloud_run_job_test_silver_MATERIAL_DUMMIES",
+                trigger_cloud_run_job_test_silver_material_dummies = CloudRunExecuteJobOperator(
+                    task_id="trigger_cloud_run_job_test_silver_material_dummies",
                     overrides={
                         "container_overrides": [
                             {
@@ -76,8 +76,8 @@ with DAG(
                     **default_cloudrun_args,
                 )
         with TaskGroup("run") as silver_run:
-                trigger_cloud_run_job_for_silver_MATERIAL_DUMMIES = CloudRunExecuteJobOperator(
-                    task_id="trigger_cloud_run_job_for_silver_MATERIAL_DUMMIES",
+                trigger_cloud_run_job_for_silver_material_dummies = CloudRunExecuteJobOperator(
+                    task_id="trigger_cloud_run_job_for_silver_material_dummies",
                     overrides={
                         "container_overrides": [
                             {
@@ -89,12 +89,12 @@ with DAG(
                     doc_md="Triggers the Cloud Run job for running silver layer",
                     **default_cloudrun_args,
                 )
-        trigger_cloud_run_job_test_silver_MATERIAL_DUMMIES >> trigger_cloud_run_job_for_silver_MATERIAL_DUMMIES
+        trigger_cloud_run_job_test_silver_material_dummies >> trigger_cloud_run_job_for_silver_material_dummies
     silver_test >> silver_run
     with TaskGroup("TG_gold") as TG_gold:
         with TaskGroup("test") as gold_test:
-                trigger_cloud_run_job_test_gold_MATERIAL_DUMMIES = CloudRunExecuteJobOperator(
-                    task_id="trigger_cloud_run_job_test_gold_MATERIAL_DUMMIES",
+                trigger_cloud_run_job_test_gold_material_dummies = CloudRunExecuteJobOperator(
+                    task_id="trigger_cloud_run_job_test_gold_material_dummies",
                     overrides={
                         "container_overrides": [
                             {
@@ -103,12 +103,12 @@ with DAG(
                             }
                         ]
                     },
-                    doc_md="Triggers the Cloud Run job for testing gold layer"
+                    doc_md="Triggers the Cloud Run job for testing gold layer",
                     **default_cloudrun_args,
                 )
         with TaskGroup("run") as gold_run:
-                trigger_cloud_run_job_for_gold_MATERIAL_DUMMIES = CloudRunExecuteJobOperator(
-                    task_id="trigger_cloud_run_job_for_gold_MATERIAL_DUMMIES",
+                trigger_cloud_run_job_for_gold_material_dummies = CloudRunExecuteJobOperator(
+                    task_id="trigger_cloud_run_job_for_gold_material_dummies",
                     overrides={
                         "container_overrides": [
                             {
@@ -120,6 +120,6 @@ with DAG(
                     doc_md="Triggers the Cloud Run job for running gold layer",
                     **default_cloudrun_args,
                 )
-        trigger_cloud_run_job_test_gold_MATERIAL_DUMMIES >> trigger_cloud_run_job_for_gold_MATERIAL_DUMMIES
+        trigger_cloud_run_job_test_gold_material_dummies >> trigger_cloud_run_job_for_gold_material_dummies
     gold_test >> gold_run
 start >> TG_bronze >> TG_silver >> TG_gold >> end

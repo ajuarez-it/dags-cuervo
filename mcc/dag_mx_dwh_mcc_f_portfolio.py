@@ -91,7 +91,7 @@ with DAG(
                             }
                         ]
                     },
-                    doc_md="Triggers the Cloud Run job for testing gold layer"
+                    doc_md="Triggers the Cloud Run job for testing gold layer",
                     **default_cloudrun_args,
                 )
         with TaskGroup("run") as gold_run:
