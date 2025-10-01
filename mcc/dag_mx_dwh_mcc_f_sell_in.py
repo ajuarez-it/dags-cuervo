@@ -1,13 +1,10 @@
 import os
 from datetime import datetime
-
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
 from utils import get_current_filename_base
-
-
 # ---
 # 1. Environment variables and constants
 # ---
@@ -34,11 +31,9 @@ with DAG(
         "region": GCP_REGION,
         "job_name": JOB_NAME,
         "gcp_conn_id": GCP_CONN_ID,
-    }
-    
+    }   
     start = EmptyOperator(task_id="start")
     end = EmptyOperator(task_id="end")
-
     # ---------------- SELL_IN ----------------
     with TaskGroup("TG_sell_in") as TG_sell_in:
         with TaskGroup("tests") as sell_in_tests:
@@ -55,8 +50,7 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing bronze layer",
                 **default_cloudrun_args,
                 
-            )
-            
+            )            
             trigger_cloud_run_job_test_silver_sell_in = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_silver_sell_in",
                 overrides={
@@ -70,7 +64,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing silver layer",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_test_gold_sell_in = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_gold_sell_in",
                 overrides={
@@ -115,16 +108,14 @@ with DAG(
                         }
                     ]
                 },
-                doc_md="Triggers the Cloud Run job with overrides for gold stage in sellout",
+                doc_md="Triggers the Cloud Run job with overrides for gold stage in sellin",
                 **default_cloudrun_args,
             )
             (
                trigger_cloud_run_job_for_silver_sell_in
             >> trigger_cloud_run_job_for_gold_sell_in
             )
-
         sell_in_tests >> sell_in_run
-
     # ---------------- CURRENCY_DECIMAL ----------------
     with TaskGroup("TG_currency_decimal") as TG_currency_decimal:
         with TaskGroup("tests") as currency_tests:
@@ -140,8 +131,7 @@ with DAG(
                 },
                 doc_md="Triggers the Cloud Run job for testing bronze layer",
                 **default_cloudrun_args,
-            )
-            
+            )            
             trigger_cloud_run_job_test_silver_currency_decimal = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_silver_currency_decimal",
                 overrides={
@@ -155,7 +145,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing silver layer",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_test_gold_currency_decimal = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_gold_currency_decimal",
                 overrides={
@@ -174,7 +163,6 @@ with DAG(
                 >> trigger_cloud_run_job_test_silver_currency_decimal
                 >> trigger_cloud_run_job_test_gold_currency_decimal
             )
-
         with TaskGroup("runs") as currency_run:
             trigger_cloud_run_job_for_silver_currency_decimal = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_for_silver_currency_decimal",
@@ -200,13 +188,12 @@ with DAG(
                         }
                     ]
                 },
-                doc_md="Triggers the Cloud Run job with overrides for gold stage in sellout",
+                doc_md="Triggers the Cloud Run job with overrides for gold stage in sellin",
                 **default_cloudrun_args,
             )
             trigger_cloud_run_job_for_silver_currency_decimal >> trigger_cloud_run_job_for_gold_currency_decimal
 
         currency_tests >> currency_run
-
     # ---------------- CALENDAR_DIM ----------------
     with TaskGroup("TG_calendar") as TG_calendar:
         with TaskGroup("tests") as calendar_tests:
@@ -223,7 +210,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing silver layer",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_test_gold_calendar = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_gold_calendar",
                 overrides={
@@ -237,9 +223,7 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing gold layer",
                 **default_cloudrun_args,
             )
-
         trigger_cloud_run_job_test_silver_calendar >> trigger_cloud_run_job_test_gold_calendar
-
         with TaskGroup("runs") as calendar_run:
             trigger_cloud_run_job_for_silver_calendar = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_for_silver_calendar",
@@ -268,11 +252,8 @@ with DAG(
                 doc_md="Triggers the Cloud Run job with overrides for gold stage in calendar",
                  **default_cloudrun_args,               
             )
-
             trigger_cloud_run_job_for_silver_calendar >> trigger_cloud_run_job_for_gold_calendar
-
         calendar_tests >> calendar_run
-
     # ---------------- BILLING ----------------
     with TaskGroup("TG_billing") as TG_billing:
         with TaskGroup("tests") as billing_tests:
@@ -289,7 +270,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing bronze layer",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_test_bronze_billing_02 = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_bronze_billing_02",
                 overrides={
@@ -303,7 +283,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing bronze layer",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_test_bronze_billing_03 = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_bronze_billing_03",
                 overrides={
@@ -317,8 +296,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing bronze layer",
                 **default_cloudrun_args,
             )
-
-
             trigger_cloud_run_job_test_silver_billing = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_silver_billing",
                 overrides={
@@ -332,7 +309,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing silver layer",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_test_gold_billing = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_gold_billing",
                 overrides={
@@ -381,11 +357,8 @@ with DAG(
                 doc_md="Triggers the Cloud Run job with overrides for gold stage in billing",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_for_silver_billing >> trigger_cloud_run_job_for_gold_billing
-
         billing_tests >> billing_run
-
     # ---------------- SALES_ORDERS ----------------
     with TaskGroup("TG_sales_orders") as TG_sales_orders:
         with TaskGroup("tests") as sales_orders_tests:
@@ -401,8 +374,7 @@ with DAG(
                 },
                 doc_md="Triggers the Cloud Run job for testing bronze layer",
                 **default_cloudrun_args,
-            )
-            
+            )            
             trigger_cloud_run_job_test_bronze_sales_orders_02 = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_bronze_sales_orders_02",
                 overrides={
@@ -416,7 +388,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing bronze layer",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_test_bronze_sales_orders_03 = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_bronze_sales_orders_03",
                 overrides={
@@ -430,7 +401,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing bronze layer",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_test_bronze_sales_orders_04 = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_bronze_sales_orders_04",
                 overrides={
@@ -444,7 +414,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing bronze layer",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_test_bronze_sales_orders_05 = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_bronze_sales_orders_05",
                 overrides={
@@ -458,7 +427,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing bronze layer",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_test_bronze_sales_orders_06 = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_bronze_sales_orders_06",
                 overrides={
@@ -472,7 +440,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing bronze layer",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_test_bronze_sales_orders_07 = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_bronze_sales_orders_07",
                 overrides={
@@ -486,7 +453,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing bronze layer",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_test_silver_sales_orders = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_silver_sales_orders",
                 overrides={
@@ -500,7 +466,6 @@ with DAG(
                 doc_md="Triggers the Cloud Run job for testing silver layer",
                 **default_cloudrun_args,
             )
-
             trigger_cloud_run_job_test_gold_sales_orders = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_gold_sales_orders",
                 overrides={
@@ -524,7 +489,6 @@ with DAG(
                 >> trigger_cloud_run_job_test_bronze_sales_orders_07
                 >> trigger_cloud_run_job_test_gold_sales_orders
             )
-
         with TaskGroup("runs") as sales_orders_run:
             trigger_cloud_run_job_for_silver_sales_orders = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_for_silver_sales_orders",
@@ -556,12 +520,9 @@ with DAG(
             trigger_cloud_run_job_for_silver_sales_orders >> trigger_cloud_run_job_for_gold_sales_orders
 
         sales_orders_tests >> sales_orders_run
-
     # ---------------- DEPENDENCIES BETWEEN GROUPS ----------------
     start >> [TG_calendar, TG_currency_decimal]
-
     [TG_calendar, TG_currency_decimal] >> TG_billing
     TG_currency_decimal >> TG_sales_orders
-
     [TG_billing, TG_sales_orders] >> TG_sell_in
     TG_sell_in >> end
