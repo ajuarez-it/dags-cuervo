@@ -389,14 +389,6 @@ with DAG(
     # ---------------- SALES_ORDERS ----------------
     with TaskGroup("TG_sales_orders") as TG_sales_orders:
         with TaskGroup("tests") as sales_orders_tests:
-            t1 = EmptyOperator(task_id="test_bronze_sales_orders_01")
-            t2 = EmptyOperator(task_id="test_bronze_sales_orders_02")
-            t3 = EmptyOperator(task_id="test_bronze_sales_orders_03")
-            t4 = EmptyOperator(task_id="test_bronze_sales_orders_04")
-            t5 = EmptyOperator(task_id="test_bronze_sales_orders_05")
-            t6 = EmptyOperator(task_id="test_bronze_sales_orders_06")
-            t7 = EmptyOperator(task_id="test_bronze_sales_orders_07")
-            t8 = EmptyOperator(task_id="test_gold_sales_orders")
             trigger_cloud_run_job_test_bronze_sales_orders_01 = CloudRunExecuteJobOperator(
                 task_id="trigger_cloud_run_job_test_bronze_sales_orders_01",
                 overrides={
