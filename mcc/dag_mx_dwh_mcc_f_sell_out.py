@@ -113,4 +113,5 @@ with DAG(
                 )
         trigger_cloud_run_job_test_gold_sell_out >> trigger_cloud_run_job_for_gold_sell_out
     gold_test >> gold_run
+    #for test example
 start >> TG_bronze >> TG_silver >> TG_gold >> end
