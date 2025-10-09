@@ -1,12 +1,10 @@
 import os
-from pathlib import Path
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.dates import days_ago
-
-
+from pathlib import Path
 # ---
 # 1. Environment variables and constants
 # ---
@@ -24,8 +22,8 @@ with DAG(
     start_date=days_ago(1),
     schedule_interval=None,
     catchup=False,
-    tags=["MCC", "CURRENCY_DECIMAL", "SILVER", "GOLD"],
-    description="A DAG to trigger currency_decimal Workflow with BigQuery, and Cloud Run jobs.",
+    tags=["MCC", "CALENDAR", "SILVER", "GOLD"],
+    description="A DAG to trigger calendar Workflow with BigQuery, and Cloud Run jobs.",
 ) as dag:
     default_cloudrun_args = {
         "project_id": GCP_PROJECT_ID,
@@ -36,46 +34,19 @@ with DAG(
     # ---
     # 3. Task Definitions
     # ---
-    bronze_sources = [
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_tcurx",
-    ]
     start = EmptyOperator(task_id="start")
     end = EmptyOperator(task_id="end")
-                
-    with TaskGroup("Bronze", default_args={'pool': 'emetrix'}) as TG_bronze:
-        prev_task = None
-        for idx, source in enumerate(bronze_sources, start=1):
-            trigger_cloud_run_job_freshness_bronze_currency_decimal= CloudRunExecuteJobOperator(
-                task_id=f"trigger_cloud_run_job_freshness_bronze_currency_decimal_{idx:02d}",
-                overrides={
-                    "container_overrides": [
-                        {
-                            "args": [
-                                "source",
-                                "freshness",
-                                "--select",
-                                f"source:{source}"
-                            ],
-                        }
-                    ],
-                },
-                doc_md="Triggers the Cloud Run job with overrides for freshness.",
-                **default_cloudrun_args,
-            )        
-            if prev_task:
-                prev_task >> trigger_cloud_run_job_freshness_bronze_currency_decimal
-            prev_task = trigger_cloud_run_job_freshness_bronze_currency_decimal
 
     with TaskGroup("Silver", default_args={'pool': 'emetrix'}) as TG_silver:
-        trigger_cloud_run_job_build_silver_currency_decimal = CloudRunExecuteJobOperator(
-            task_id="trigger_cloud_run_job_build_silver_currency_decimal",
+        trigger_cloud_run_job_build_silver_calendar = CloudRunExecuteJobOperator(
+            task_id="trigger_cloud_run_job_build_silver_calendar",
             overrides={
                 "container_overrides": [
                     {
                         "args": [
                             "build",
                             "--select",
-                            "staging.currency_decimal"
+                            "staging.staging.calendar"
                         ],
                     }
                 ],
@@ -85,15 +56,15 @@ with DAG(
         )
 
     with TaskGroup("Gold", default_args={'pool': 'emetrix'}) as TG_gold:
-        trigger_cloud_run_job_build_gold_currency_decimal = CloudRunExecuteJobOperator(
-            task_id="currency_decimal_gold",
+        trigger_cloud_run_job_build_gold_calendar = CloudRunExecuteJobOperator(
+            task_id="calendar_gold",
             overrides={
                 "container_overrides": [
                     {
                         "args": [
                             "build",
                             "--select",
-                            "marts.reports.r_currency_decimal"
+                            "dbt_cuervo.GLD_GLOBAL_MASTER_REPORT.r_calendar"
                         ],
                     }
                 ],
@@ -101,5 +72,4 @@ with DAG(
             doc_md="Triggers a Cloud Run job to run and then test the gold layer",
             **default_cloudrun_args,
         )
-
-start >> TG_bronze >> TG_silver >> TG_gold >> end
+start >> TG_silver >> TG_gold >> end
