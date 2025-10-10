@@ -5,9 +5,8 @@ from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.dates import days_ago
-def get_freshness_sources(bronze_sources):
-    source = ' '.join([f"source:dbt_cuervo.{source}" for source in bronze_sources])
-    return source
+from sources import get_freshness_sources
+
 
 # ---
 # 1. Environment variables and constants

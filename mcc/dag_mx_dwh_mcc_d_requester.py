@@ -6,9 +6,7 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.dates import days_ago
-def get_freshness_sources(bronze_sources):
-    source = ' '.join([f"source:dbt_cuervo.{source}" for source in bronze_sources])
-    return source
+from sources import get_freshness_sources
 
 # ---
 # 1. Environment variables and constants
@@ -32,7 +30,7 @@ default_args = {
 with DAG(
     dag_id=DAG_NAME,
     start_date=days_ago(1),
-    schedule_interval="10 0,13 * * *",
+    schedule="40 11,23 * * *",
     catchup=False,
     default_args=default_args,
     tags=["MCC", "REQUESTER", "SILVER", "GOLD"],
