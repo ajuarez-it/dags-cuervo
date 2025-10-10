@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read # Needs read access to checkout and diff the code
+      contents: read
     environment:
       name: prd
       url: 'http//dev.myapp.com'
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Fetches the entire history, which is required to diff against the previous commit
+          # Fetches the entire history for push events and the correct depth for PRs
           fetch-depth: 0
 
       - name: Authenticate to Google Cloud
@@ -35,24 +35,27 @@ jobs:
       - name: Get changed Python files
         id: get_files
         run: |
-          # Compares the commit before the push with the current one, filters for .py files,
-          # and exports the list of files as an output variable.
-          FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '\.py$' | xargs)
-          echo "files_to_upload=${FILES}" >> $GITHUB_OUTPUT
+          echo "Event name: ${{ github.event_name }}"
+          # For pushes, compare the commit before the push with the current one.
+          if [ "${{ github.event_name }}" == "push" ]; then
+            FILES=$(git diff --name-only --diff-filter=AM ${{ github.event.before }} ${{ github.sha }} | grep '\.py$')
+          # For pull requests, compare the head of the PR with its base.
+          elif [ "${{ github.event_name }}" == "pull_request" ]; then
+            FILES=$(git diff --name-only --diff-filter=AM ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep '\.py$')
+          fi
+          
+          # Use xargs to format the file list into a single line
+          echo "files_to_upload=$(echo $FILES | xargs)" >> $GITHUB_OUTPUT
 
       - name: Prepare and upload modified files
-        # This step only runs if the 'files_to_upload' output from the previous step is not empty
         if: steps.get_files.outputs.files_to_upload != ''
         run: |
           echo "Files to upload: ${{ steps.get_files.outputs.files_to_upload }}"
           
-          # Create a temporary staging directory
           mkdir staging_dir
           
-          # Copy only the changed files into the staging directory, preserving their path structure
-          for file in ${{ steps.get_files.outputs.files_to_upload }}; do
-            cp --parents "$file" staging_dir/
-          done
+          # Use xargs to handle the list of files for the copy command
+          echo "${{ steps.get_files.outputs.files_to_upload }}" | xargs -n 1 -I {} cp --parents {} staging_dir/
           
-          # Use the gcloud CLI to upload the contents of the staging directory
+          echo "Uploading contents of staging_dir to GCS..."
           gcloud storage cp --recursive staging_dir/* gs://us-central1-cc-data-analyti-d9b71af5-bucket/dags/
