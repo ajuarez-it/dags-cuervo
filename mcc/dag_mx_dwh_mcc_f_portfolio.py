@@ -104,4 +104,3 @@ with DAG(
 
     end = EmptyOperator(task_id="end")
 start >> TG_bronze >> TG_silver >> TG_gold >> end
- 

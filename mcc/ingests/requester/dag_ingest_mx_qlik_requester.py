@@ -32,4 +32,4 @@ with DAG(
 ) as dag:
     
     airflowTasksDict = {}  
-    qlikflow_utils.create_tasks(tasksDict, airflowTasksDict, dag)
+    qlikflow_utils.create_tasks(tasksDict, airflowTasksDict, dag) 
