@@ -24,9 +24,9 @@ with DAG(
     default_args = default_args ,
     start_date = datetime.now() - timedelta(days=1),
     schedule = None,
+    description = 'Default test dag',
     tags = ['QLIKSENSE', 'INGEST', 'MCC', 'STAGING'],
     catchup = False,
-    description=__doc__.partition(".")[0],
     doc_md=__doc__,
 ) as dag:
     
