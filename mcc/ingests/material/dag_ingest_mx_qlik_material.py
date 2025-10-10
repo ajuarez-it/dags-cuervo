@@ -8,7 +8,7 @@ from pathlib import Path
 tasksDict = {
     u'qliksense. Test task': {
         'Soft' : 'qs1',
-        'TaskId' : 'c022842b-4934-4ae4-b5f0-5e6c915fdb70',
+        'TaskId' : '48e972fb-261c-4de3-a2da-d673548decab',
         'RandomStartDelay' : 10, 
         }
     }

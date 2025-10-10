@@ -45,59 +45,58 @@ with DAG(
     start = EmptyOperator(task_id="start")
     end = EmptyOperator(task_id="end")
     # ---------------- SELL_IN ----------------
-    with TaskGroup("SellIn", default_args={'pool': 'emetrix'}) as TG_sell_in:      
-        with TaskGroup("Bronze", default_args={'pool': 'emetrix'}) as TG_bronze:
-            trigger_cloud_run_job_freshness_bronze_sell_in= CloudRunExecuteJobOperator(
-                task_id="sellin_freshness_bronze",
-                overrides={
-                    "container_overrides": [
-                        {
-                            "args": [
-                                "source",
-                                "freshness",
-                                "--select",
-                                "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcppa001_q0011"
-                            ],
-                        }
-                    ],
-                },
-                doc_md="Triggers the Cloud Run job with overrides for freshness.",
-                **default_cloudrun_args,
-            )
-            
-        with TaskGroup("Silver", default_args={'pool': 'emetrix'}) as TG_silver:
-            trigger_cloud_run_job_build_silver_sell_in = CloudRunExecuteJobOperator(
-                task_id="sellin_silver",
-                overrides={
-                    "container_overrides": [
-                        {
-                            "args": [
-                                "build",
-                                "--select",
-                                "staging.sell_in"
-                            ],
-                        }
-                    ],
-                },
-                doc_md="Triggers a Cloud Run job to run and then test the silver layer",
-                **default_cloudrun_args,
-            )
+    with TaskGroup("Bronze", default_args={'pool': 'emetrix'}) as TG_bronze:
+        trigger_cloud_run_job_freshness_bronze_sell_in= CloudRunExecuteJobOperator(
+            task_id="sellin_freshness_bronze",
+            overrides={
+                "container_overrides": [
+                    {
+                        "args": [
+                            "source",
+                            "freshness",
+                            "--select",
+                            "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcppa001_q0011"
+                        ],
+                    }
+                ],
+            },
+            doc_md="Triggers the Cloud Run job with overrides for freshness.",
+            **default_cloudrun_args,
+        )
+        
+    with TaskGroup("Silver", default_args={'pool': 'emetrix'}) as TG_silver:
+        trigger_cloud_run_job_build_silver_sell_in = CloudRunExecuteJobOperator(
+            task_id="sellin_silver",
+            overrides={
+                "container_overrides": [
+                    {
+                        "args": [
+                            "build",
+                            "--select",
+                            "staging.sell_in"
+                        ],
+                    }
+                ],
+            },
+            doc_md="Triggers a Cloud Run job to run and then test the silver layer",
+            **default_cloudrun_args,
+        )
 
-        with TaskGroup("Gold", default_args={'pool': 'emetrix'}) as TG_gold:
-            trigger_cloud_run_job_build_gold_sell_in = CloudRunExecuteJobOperator(
-                task_id="sellin_gold",
-                overrides={
-                    "container_overrides": [
-                        {
-                            "args": [
-                                "build",
-                                "--select",
-                                "marts.commercial.f_mcc_sell_in"
-                            ],
-                        }
-                    ],
-                },
-                doc_md="Triggers a Cloud Run job to run and then test the gold layer",
-                **default_cloudrun_args,
-            )
-    start >> TG_bronze >> TG_silver >> TG_gold >> end
+    with TaskGroup("Gold", default_args={'pool': 'emetrix'}) as TG_gold:
+        trigger_cloud_run_job_build_gold_sell_in = CloudRunExecuteJobOperator(
+            task_id="sellin_gold",
+            overrides={
+                "container_overrides": [
+                    {
+                        "args": [
+                            "build",
+                            "--select",
+                            "marts.commercial.f_mcc_sell_in"
+                        ],
+                    }
+                ],
+            },
+            doc_md="Triggers a Cloud Run job to run and then test the gold layer",
+            **default_cloudrun_args,
+        )
+start >> TG_bronze >> TG_silver >> TG_gold >> end

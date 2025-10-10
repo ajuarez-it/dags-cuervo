@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.dates import days_ago
@@ -12,6 +13,7 @@ from pathlib import Path
 # 1. Environment variables and constants
 # ---
 # It's best practice to store sensitive IDs and configurations in Airflow Variables or a secret backend
+INGEST_DAG_ID = "dag_ingest_mx_qlik_requester"
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "cc-data-analytics-prd")
 GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 GCP_CONN_ID = "google_cloud_default" # Your Airflow connection ID for Google Cloud
@@ -42,7 +44,7 @@ with DAG(
         "retries": 0,
     }
     bronze_sources = [
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bi0pcustomer",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0pcustomer",
     "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tcust_group",
     "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tdistr_chan",
     "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tcustomer",
@@ -50,17 +52,33 @@ with DAG(
     "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tsales_dist",
     "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tsales_grp",
     "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tsales_off",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bictzctetds",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bictzdircom",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bictzsgmntcts",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bictzctetds",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bictzdircom",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bictzsgmntcts",
     "dbt_cuervo.BRZ_MX_ONC_SPO_INT.layoutmcc",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bi0tcust_grp2",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bi0tcust_grp5",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tcust_grp2",
+    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tcust_grp5",
     "dbt_cuervo.BRZ_MX_ONC_SPO_INT.d01_2_solicitante_dummie",
     "dbt_cuervo.BRZ_MX_ONC_SPO_INT.d_areasnielsen",
     ]
     start = EmptyOperator(task_id="start")
     end = EmptyOperator(task_id="end")
+
+    with TaskGroup("Ingest", default_args={'pool': 'emetrix'}) as TG_ingest:
+
+        trigger_and_wait_for_staging_dag = TriggerDagRunOperator(
+            task_id="trigger_and_wait_for_staging_dag",
+            trigger_dag_id=INGEST_DAG_ID, # The ID of the DAG to call
+            conf={
+                "execution_mode": "triggered_by_parent",
+                "source_data_date": "{{ ds }}", # Passes the parent's execution date
+            },
+            execution_date="{{ ds }}", # Pass the parent's execution date to the child
+            reset_dag_run=True, # Recommended to allow the task to retry triggering the child
+            wait_for_completion=True, # This is the key change! The operator will now wait.
+            poke_interval=20, # How often to check the status of the triggered DAG.
+            failed_states=["failed"], # The states in the child DAG that will cause this task to fail.
+        )
     with TaskGroup("Bronze", default_args={'pool': 'emetrix'}) as TG_bronze:
         prev_task = None
         for idx, source in enumerate(bronze_sources, start=1):

@@ -1,0 +1,40 @@
+raw_bi0tcustomer        >>  qlik >> requester
+raw_bi0tcust_group      >>  qlik >> requester
+raw_bi0tcust_grp2   >>  qlik >> requester
+raw_bi0tcust_grp5   >>  qlik >> requester
+raw_bi0tsales_dist      >>  qlik >> requester
+raw_bi0tregion          >>  qlik >> requester
+raw_bi0tdistr_chan      >>  qlik >> requester
+raw_bi0tsales_grp       >>  qlik >> requester
+raw_bi0tsales_off       >>  qlik >> requester
+raw_zcprt001_q0006      >>  aecorsoft >> sellout
+raw_zcppa001_q0001      >>  aecorsoft >> budget
+raw_zcppa001_q0011      >>  aecorsoft >> sellinsv
+raw_zcppa001_q0022      >>  aecorsoft >> budget v2
+raw_zcpfi002_q0001      >>  aecorsoft >> portfolio
+raw_tzmm_zcatg          >>  qlik >> material
+raw_bi0tmat_kondm       >>  qlik >> material
+raw_bi0tmatl_grp_3      >>  qlik >> material
+raw_bi0textmatlgrp      >>  qlik >> material
+raw_bi0tmatl_group      >>  qlik >> material
+raw_bi0tdivision        >>  qlik >> material
+raw_bi0tmaterial        >>  qlik >> material
+raw_qs_bictzmm_zcate    >>  qlik >> material
+raw_qs_bi0pmaterial     >>  qlik >> material
+raw_bictzsgmntcts       >>  qlik >> requester
+raw_qs_bictzsgmntcts    >>  qlik >> requester
+raw_bi0pcustomer        >>  qlik >> requester
+raw_qs_bi0pcustomer     >>  qlik >> requester
+raw_qs_bi0tcust_grp5    >>  qlik >> requester
+raw_qs_bi0tcust_grp2    >>  qlik >> requester
+raw_qs_bictzdircom      >>  qlik >> requester
+raw_qs_bictzctetds      >>  qlik >> requester
+
+
+
+
+d_areasnielsen
+d_material_dummies
+d01_2_solicitante_dummie
+d06_1_subcanales
+layoutmcc

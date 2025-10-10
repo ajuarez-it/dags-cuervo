@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
 from pathlib import Path
@@ -12,6 +13,7 @@ from airflow.utils.dates import days_ago
 # 1. Environment variables and constants
 # ---
 # It's best practice to store sensitive IDs and configurations in Airflow Variables or a secret backend
+INGEST_DAG_ID = "dag_ingest_mx_qlik_material"
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "cc-data-analytics-prd")
 GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 GCP_CONN_ID = "google_cloud_default" # Your Airflow connection ID for Google Cloud
@@ -29,7 +31,7 @@ default_args = {
 with DAG(
     dag_id=DAG_NAME,
     start_date=days_ago(1),
-    schedule_interval="10 0,13 * * *",
+    schedule_interval="30 11,23 * * *",
     catchup=False,
     tags=["MCC", "MATERIAL", "SILVER", "GOLD"],
     description="A DAG to transform data from silver to gold",
@@ -50,12 +52,27 @@ with DAG(
         "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tmatl_grp_3",
         "dbt_cuervo.BRZ_MX_ONC_SPO_INT.d_material_dummies",
         "dbt_cuervo.BRZ_MX_ONP_AECORS.raw_mvke",
-        "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bictzmm_zcate",
+        "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bictzmm_zcate",
         "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_tzmm_zcatg",
-        "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_qs_bi0pmaterial"
+        "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0pmaterial"
     ]
     start = EmptyOperator(task_id="start")
     end = EmptyOperator(task_id="end")
+    with TaskGroup("Ingest", default_args={'pool': 'emetrix'}) as TG_ingest:
+
+        trigger_and_wait_for_staging_dag = TriggerDagRunOperator(
+            task_id="trigger_and_wait_for_staging_dag",
+            trigger_dag_id=INGEST_DAG_ID, # The ID of the DAG to call
+            conf={
+                "execution_mode": "triggered_by_parent",
+                "source_data_date": "{{ ds }}", # Passes the parent's execution date
+            },
+            execution_date="{{ ds }}", # Pass the parent's execution date to the child
+            reset_dag_run=True, # Recommended to allow the task to retry triggering the child
+            wait_for_completion=True, # This is the key change! The operator will now wait.
+            poke_interval=20, # How often to check the status of the triggered DAG.
+            failed_states=["failed"], # The states in the child DAG that will cause this task to fail.
+        )
     with TaskGroup("Bronze", default_args={'pool': 'emetrix'}) as TG_bronze:
             prev_task = None
             for idx, source in enumerate(bronze_sources, start=1):
@@ -115,4 +132,4 @@ with DAG(
             **default_cloudrun_args,
         )
 
-start >> TG_bronze >> TG_silver >> TG_gold >> end 
+start >> TG_ingest >> TG_bronze >> TG_silver >> TG_gold >> end 
