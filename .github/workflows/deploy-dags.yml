@@ -1,4 +1,4 @@
-name: Deploy Modified Airflow DAGs to GCS (PRD)
+name: Deploy Modified Airflow DAGs to GCS
 
 on:
   push:
@@ -55,3 +55,4 @@ jobs:
           done
           
           # Use the gcloud CLI to upload the contents of the staging directory
+          gcloud storage cp --recursive staging_dir/* gs://us-central1-cc-data-analyti-d9b71af5-bucket/dags/
