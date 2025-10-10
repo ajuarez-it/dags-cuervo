@@ -1,12 +1,12 @@
 import os
-from datetime import datetime
+from pathlib import Path
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.dates import days_ago
-from pathlib import Path
+from utils import get_freshness_sources
 
 
 # ---
@@ -33,6 +33,7 @@ with DAG(
     start_date=days_ago(1),
     schedule_interval="10 0,13 * * *",
     catchup=False,
+    default_args=default_args,
     tags=["MCC", "REQUESTER", "SILVER", "GOLD"],
     description="A DAG to transform data from silver to gold",
 ) as dag:
@@ -44,23 +45,24 @@ with DAG(
         "retries": 0,
     }
     bronze_sources = [
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0pcustomer",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tcust_group",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tdistr_chan",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tcustomer",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tregion",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tsales_dist",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tsales_grp",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tsales_off",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bictzctetds",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bictzdircom",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bictzsgmntcts",
-    "dbt_cuervo.BRZ_MX_ONC_SPO_INT.layoutmcc",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tcust_grp2",
-    "dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_bi0tcust_grp5",
-    "dbt_cuervo.BRZ_MX_ONC_SPO_INT.d01_2_solicitante_dummie",
-    "dbt_cuervo.BRZ_MX_ONC_SPO_INT.d_areasnielsen",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0pcustomer",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tcust_group",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tdistr_chan",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tcustomer",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tregion",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tsales_dist",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tsales_grp",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tsales_off",
+    "BRZ_MX_ONP_SAP_BW.raw_bictzctetds",
+    "BRZ_MX_ONP_SAP_BW.raw_bictzdircom",
+    "BRZ_MX_ONP_SAP_BW.raw_bictzsgmntcts",
+    "BRZ_MX_ONC_SPO_INT.layoutmcc",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tcust_grp2",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tcust_grp5",
+    "BRZ_MX_ONC_SPO_INT.d01_2_solicitante_dummie",
+    "BRZ_MX_ONC_SPO_INT.d_areasnielsen",
     ]
+
     start = EmptyOperator(task_id="start")
     end = EmptyOperator(task_id="end")
 
@@ -79,29 +81,26 @@ with DAG(
             poke_interval=20, # How often to check the status of the triggered DAG.
             failed_states=["failed"], # The states in the child DAG that will cause this task to fail.
         )
+
     with TaskGroup("Bronze", default_args={'pool': 'emetrix'}) as TG_bronze:
-        prev_task = None
-        for idx, source in enumerate(bronze_sources, start=1):
-            trigger_cloud_run_job_freshness_bronze_requester= CloudRunExecuteJobOperator(
-                task_id=f"trigger_cloud_run_job_test_bronze_requester_{idx:02d}",
-                overrides={
-                    "container_overrides": [
-                        {
-                            "args": [
-                                "source",
-                                "freshness",
-                                "--select",
-                                f"source:{source}"
-                            ],
-                        }
-                    ],
-                },
-                doc_md="Triggers the Cloud Run job with overrides for freshness.",
-                **default_cloudrun_args,
-            )        
-            if prev_task:
-                prev_task >> trigger_cloud_run_job_freshness_bronze_requester
-            prev_task = trigger_cloud_run_job_freshness_bronze_requester
+        # 2. Create a single operator instance instead of looping
+        trigger_cloud_run_job_freshness_bronze_requester = CloudRunExecuteJobOperator(
+            task_id="trigger_cloud_run_job_freshness_bronze_sources",
+            overrides={
+                "container_overrides": [
+                    {
+                        "args": [
+                            "source",
+                            "freshness",
+                            "--select",
+                            get_freshness_sources(bronze_sources)
+                        ],
+                    }
+                ],
+            },
+            doc_md="Triggers a single Cloud Run job for all bronze source freshness checks.",
+            **default_cloudrun_args,
+        )
                 
     with TaskGroup("Silver", default_args={'pool': 'emetrix'}) as TG_silver:
         trigger_cloud_run_job_build_silver_requester = CloudRunExecuteJobOperator(

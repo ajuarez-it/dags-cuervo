@@ -1,12 +1,11 @@
 import os
-from datetime import datetime
+from pathlib import Path
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
-from pathlib import Path
 from airflow.utils.dates import days_ago
-
+from utils import get_freshness_sources
 
 # ---
 # 1. Environment variables and constants
@@ -31,6 +30,7 @@ with DAG(
     start_date=days_ago(1),
     schedule_interval="15 4 * * *",
     catchup=False,
+    default_args=default_args,
     tags=["MCC", "SELL_IN", "SILVER", "GOLD"],
     description="A DAG to transform data from silver to gold",
 ) as dag:
@@ -45,9 +45,14 @@ with DAG(
     start = EmptyOperator(task_id="start")
     end = EmptyOperator(task_id="end")
     # ---------------- SELL_IN ----------------
+    bronze_sources = [
+    "BRZ_MX_ONP_SAP_BW.raw_zcppa001_q0011"
+    ]
+    
     with TaskGroup("Bronze", default_args={'pool': 'emetrix'}) as TG_bronze:
-        trigger_cloud_run_job_freshness_bronze_sell_in= CloudRunExecuteJobOperator(
-            task_id="sellin_freshness_bronze",
+        # 2. Create a single operator instance instead of looping
+        trigger_cloud_run_job_freshness_bronze_sell_in = CloudRunExecuteJobOperator(
+            task_id="trigger_cloud_run_job_freshness_bronze_sources",
             overrides={
                 "container_overrides": [
                     {
@@ -55,12 +60,12 @@ with DAG(
                             "source",
                             "freshness",
                             "--select",
-                            "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcppa001_q0011"
+                            get_freshness_sources(bronze_sources)
                         ],
                     }
                 ],
             },
-            doc_md="Triggers the Cloud Run job with overrides for freshness.",
+            doc_md="Triggers a single Cloud Run job for all bronze source freshness checks.",
             **default_cloudrun_args,
         )
         

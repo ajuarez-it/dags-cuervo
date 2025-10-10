@@ -5,6 +5,7 @@ from airflow.operators.empty import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup 
 from airflow.utils.dates import days_ago
+from utils import get_freshness_sources
 
 # ---
 # 1. Environment variables and constants
@@ -50,12 +51,13 @@ with DAG(
     # ---
     start = EmptyOperator(task_id="start")
     end = EmptyOperator(task_id="end")
+    bronze_sources = [
+    "BRZ_MX_ONP_SAP_BW.raw_zcprt001_q0006"
+    ]
 
-    # This task now passes the Airflow run_id to the Cloud Run job.
-    # The container can use this ID for logging, tracking, or creating unique outputs.
     with TaskGroup("Bronze", default_args={'pool': 'emetrix'}) as TG_bronze:
-        trigger_cloud_run_job_freshness_bronze_sell_out= CloudRunExecuteJobOperator(
-            task_id="sellout_freshness_bronze",
+        trigger_cloud_run_job_freshness_bronze_sell_out = CloudRunExecuteJobOperator(
+            task_id="trigger_cloud_run_job_freshness_bronze_sources",
             overrides={
                 "container_overrides": [
                     {
@@ -63,12 +65,12 @@ with DAG(
                             "source",
                             "freshness",
                             "--select",
-                            "source:dbt_cuervo.BRZ_MX_ONP_SAP_BW.raw_zcprt001_q0006"
+                            get_freshness_sources(bronze_sources)
                         ],
                     }
                 ],
             },
-            doc_md="Triggers the Cloud Run job with overrides for freshness.",
+            doc_md="Triggers a single Cloud Run job for all bronze source freshness checks.",
             **default_cloudrun_args,
         )
 

@@ -5,6 +5,7 @@ from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.dates import days_ago
+from utils import get_freshness_sources
 # ---
 # 1. Environment variables and constants
 # ---
@@ -35,34 +36,29 @@ with DAG(
     # 3. Task Definitions
     # ---
     bronze_sources = [
-    "dbt_cuervo.BRZ_MX_ONC_SPO_INT.layoutmcc",
+    "BRZ_MX_ONC_SPO_INT.layoutmcc",
     ]
     start = EmptyOperator(task_id="start")
     end = EmptyOperator(task_id="end")
 
     with TaskGroup("Bronze", default_args={'pool': 'emetrix'}) as TG_bronze:
-        prev_task = None
-        for idx, source in enumerate(bronze_sources, start=1):
-            trigger_cloud_run_job_freshness_bronze_areas_layout_mcc= CloudRunExecuteJobOperator(
-                task_id=f"trigger_cloud_run_job_freshness_bronze_areas_layout_mcc_{idx:02d}",
-                overrides={
-                    "container_overrides": [
-                        {
-                            "args": [
-                                "source",
-                                "freshness",
-                                "--select",
-                                f"source:{source}"
-                            ],
-                        }
-                    ],
-                },
-                doc_md="Triggers the Cloud Run job with overrides for freshness.",
-                **default_cloudrun_args,
-            )        
-            if prev_task:
-                prev_task >> trigger_cloud_run_job_freshness_bronze_areas_layout_mcc
-            prev_task = trigger_cloud_run_job_freshness_bronze_areas_layout_mcc
+        trigger_cloud_run_job_freshness_bronze_layout_mcc = CloudRunExecuteJobOperator(
+            task_id="trigger_cloud_run_job_freshness_bronze_sources",
+            overrides={
+                "container_overrides": [
+                    {
+                        "args": [
+                            "source",
+                            "freshness",
+                            "--select",
+                            get_freshness_sources(bronze_sources)
+                        ],
+                    }
+                ],
+            },
+            doc_md="Triggers a single Cloud Run job for all bronze source freshness checks.",
+            **default_cloudrun_args,
+        )
 
     with TaskGroup("Silver", default_args={'pool': 'emetrix'}) as TG_silver:
         trigger_cloud_run_job_build_silver_layout_mcc = CloudRunExecuteJobOperator(
