@@ -31,5 +31,5 @@ with DAG(
     doc_md=__doc__,
 ) as dag:
     
-    airflowTasksDict = {} 
+    airflowTasksDict = {}  
     qlikflow_utils.create_tasks(tasksDict, airflowTasksDict, dag)
