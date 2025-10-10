@@ -5,9 +5,9 @@ from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.dates import days_ago
-from utils import get_freshness_sources
-
-DAG_NAME = Path(__file__).stem
+def get_freshness_sources(bronze_sources):
+    source = ' '.join([f"source:dbt_cuervo.{source}" for source in bronze_sources])
+    return source
 # ---
 # 1. Environment variables and constants
 # ---
