@@ -72,4 +72,4 @@ with DAG(
             doc_md="Triggers a Cloud Run job to run and then test the gold layer",
             **default_cloudrun_args,
         )
-start >> TG_silver >> TG_gold >> end
+start >> TG_silver >> TG_gold >> end 

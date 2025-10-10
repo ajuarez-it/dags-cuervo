@@ -506,4 +506,4 @@ with DAG(
 
         sales_orders_tests >> sales_orders_run
     # ---------------- DEPENDENCIES BETWEEN GROUPS ----------------
-    start >> TG_sell_in >> end
+    start >> TG_sell_in >> end 

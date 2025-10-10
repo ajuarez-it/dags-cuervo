@@ -108,5 +108,4 @@ with DAG(
 
     # --- Orchestration ---
     # The dependency chain is now simpler without the sensor.
-    trigger_and_wait_for_staging_dag >> generate_sql_task >> execute_external_table_task 
- 
+    trigger_and_wait_for_staging_dag >> generate_sql_task >> execute_external_table_task
