@@ -1,17 +1,6 @@
-name: Deploy Modified Airflow DAGs to GCS (PRD)
-
-on:
-  push:
-    branches:
-      - main
-    pull_request:
-      - main
-    paths:
-      - '**.py' # Optional: Only triggers the workflow if a .py file is changed
-
 jobs:
   upload-dags:
-    name: Deploy New DAGs to PRD
+    name: Deploy to PRD
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -23,6 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          # Fetches the entire history for push events and the correct depth for PRs
           fetch-depth: 0
 
       - name: Authenticate to Google Cloud
@@ -31,43 +21,30 @@ jobs:
         with:
           credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
 
-      - name: Get new Python files
+      - name: Get changed Python files
         id: get_files
         run: |
-          # Determine the correct commits to compare based on the event type
+          echo "Event name: ${{ github.event_name }}"
+          # For pushes, compare the commit before the push with the current one.
           if [ "${{ github.event_name }}" == "push" ]; then
-            BASE_SHA="${{ github.event.before }}"
-            HEAD_SHA="${{ github.sha }}"
+            FILES=$(git diff --name-only --diff-filter=AM ${{ github.event.before }} ${{ github.sha }} | grep '\.py$')
+          # For pull requests, compare the head of the PR with its base.
           elif [ "${{ github.event_name }}" == "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
-            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            FILES=$(git diff --name-only --diff-filter=AM ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep '\.py$')
           fi
-
-          echo "Finding new .py files between $BASE_SHA and $HEAD_SHA..."
           
-          # Use --diff-filter=A to list only files that were Added.
-          # The '|| true' prevents the step from failing if grep finds no matches.
-          NEW_FILES=$(git diff --name-only --diff-filter=A "$BASE_SHA" "$HEAD_SHA" | grep '\.py$' || true)
-          
-          # This is the recommended way to pass multi-line strings between steps
-          echo 'files<<EOF' >> "$GITHUB_OUTPUT"
-          echo "$NEW_FILES" >> "$GITHUB_OUTPUT"
-          echo 'EOF' >> "$GITHUB_OUTPUT"
+          # Use xargs to format the file list into a single line
+          echo "files_to_upload=$(echo $FILES | xargs)" >> $GITHUB_OUTPUT
 
-      - name: Prepare and upload new files
-        if: steps.get_files.outputs.files != ''
+      - name: Prepare and upload modified files
+        if: steps.get_files.outputs.files_to_upload != ''
         run: |
-          echo "New files to upload:"
-          echo "${{ steps.get_files.outputs.files }}"
+          echo "Files to upload: ${{ steps.get_files.outputs.files_to_upload }}"
           
           mkdir staging_dir
           
-          # Use a robust 'while read' loop to process each file path safely
-          echo "${{ steps.get_files.outputs.files }}" | while IFS= read -r file; do
-            if [ -n "$file" ]; then
-              cp --parents "$file" staging_dir/
-            fi
-          done
+          # Use xargs to handle the list of files for the copy command
+          echo "${{ steps.get_files.outputs.files_to_upload }}" | xargs -n 1 -I {} cp --parents {} staging_dir/
           
-          echo "Uploading new files to GCS..."
+          echo "Uploading contents of staging_dir to GCS..."
           gcloud storage cp --recursive staging_dir/* gs://us-central1-cc-data-analyti-d9b71af5-bucket/dags/
