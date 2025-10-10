@@ -1,14 +1,3 @@
-name: Deploy Modified Airflow DAGs to GCS (PRD)
-
-on:
-  push:
-    branches:
-      - main
-    pull_request:
-      - main
-    paths:
-      - '**.py' # Optional: Only triggers the workflow if a .py file is changed
-
 jobs:
   upload-dags:
     name: Deploy to PRD
