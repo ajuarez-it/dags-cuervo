@@ -19,16 +19,16 @@ raw_bi0textmatlgrp      >>  qlik >> material
 raw_bi0tmatl_group      >>  qlik >> material
 raw_bi0tdivision        >>  qlik >> material
 raw_bi0tmaterial        >>  qlik >> material
-raw_qs_bictzmm_zcate    >>  qlik >> material
-raw_qs_bi0pmaterial     >>  qlik >> material
+raw_bictzmm_zcate    >>  qlik >> material Vista
+raw_bi0pmaterial     >>  qlik >> material
 raw_bictzsgmntcts       >>  qlik >> requester
-raw_qs_bictzsgmntcts    >>  qlik >> requester
+raw_bictzsgmntcts    >>  qlik >> requester vista
 raw_bi0pcustomer        >>  qlik >> requester
-raw_qs_bi0pcustomer     >>  qlik >> requester
-raw_qs_bi0tcust_grp5    >>  qlik >> requester
-raw_qs_bi0tcust_grp2    >>  qlik >> requester
-raw_qs_bictzdircom      >>  qlik >> requester
-raw_qs_bictzctetds      >>  qlik >> requester
+raw_bi0pcustomer     >>  qlik >> requester
+raw_bi0tcust_grp5    >>  qlik >> requester
+raw_bi0tcust_grp2    >>  qlik >> requester
+raw_bictzdircom      >>  qlik >> requester
+raw_bictzctetds      >>  qlik >> requester
 
 
 

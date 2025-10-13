@@ -1,21 +1,25 @@
 import os
+import pendulum
 from pathlib import Path
+from datetime import datetime
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
-from airflow.utils.dates import days_ago
 from sources import get_freshness_sources
 
 # ---
 # 1. Environment variables and constants
 # ---
 # It's best practice to store sensitive IDs and configurations in Airflow Variables or a secret backend
+
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "cc-data-analytics-prd")
 GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 GCP_CONN_ID = "google_cloud_default" # Your Airflow connection ID for Google Cloud
 JOB_NAME = "dbt-cuervo"
 DAG_NAME = Path(__file__).stem
+LOCAL_TZ = pendulum.timezone("America/Mexico_City")
+
 # ---
 # 2. DAG Definition
 # ---
@@ -27,7 +31,7 @@ default_args = {
     
 with DAG(
     dag_id=DAG_NAME,
-    start_date=days_ago(1),
+    start_date=datetime(2023, 1, 1, 0, 0, tzinfo=LOCAL_TZ),
     schedule_interval="15 4 * * *",
     catchup=False,
     default_args=default_args,
