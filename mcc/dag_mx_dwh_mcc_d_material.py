@@ -14,27 +14,28 @@ from sources import get_freshness_sources
 # ---
 # It's best practice to store sensitive IDs and configurations in Airflow Variables or a secret backend
 
+DAG_NAME = Path(__file__).stem
 INGEST_DAG_ID = "dag_ingest_mx_qlik_material"
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "cc-data-analytics-prd")
 GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 GCP_CONN_ID = "google_cloud_default" # Your Airflow connection ID for Google Cloud
 JOB_NAME = "dbt-cuervo"
-DAG_NAME = Path(__file__).stem
 LOCAL_TZ = pendulum.timezone("America/Mexico_City")
+
 # ---
 # 2. DAG Definition
 # ---
 default_args = {
     'owner': 'Miguel Dieguillo', 
     'retries': 0, 
-    'maintainer': 'Aaron Juarez'
+    'maintainer': 'Aaron Juarez',
+    "start_date": datetime(2023, 1, 1, 0, 0, tzinfo=LOCAL_TZ),
+    "catchup": False,
     }
 
 with DAG(
     dag_id=DAG_NAME,
-    start_date=datetime(2023, 1, 1, 0, 0, tzinfo=LOCAL_TZ),
     schedule_interval="30 11,23 * * *",
-    catchup=False,
     default_args=default_args,
     tags=["MCC", "MATERIAL", "SILVER", "GOLD"],
     description="A DAG to transform data from silver to gold",

@@ -26,14 +26,14 @@ LOCAL_TZ = pendulum.timezone("America/Mexico_City")
 default_args = {
     'owner': 'Miguel Dieguillo', 
     'retries': 0, 
-    'maintainer': 'Aaron Juarez'
+    'maintainer': 'Aaron Juarez',
+    "start_date": datetime(2023, 1, 1, 0, 0, tzinfo=LOCAL_TZ),
+    "catchup": False,
     }
     
 with DAG(
     dag_id=DAG_NAME,
-    start_date=datetime(2023, 1, 1, 0, 0, tzinfo=LOCAL_TZ),
     schedule_interval="15 4 * * *",
-    catchup=False,
     default_args=default_args,
     tags=["MCC", "PORTFOLIO", "SILVER", "GOLD"],
     description="A DAG to trigger portfolio Workflow with BigQuery, and Cloud Run jobs.",
