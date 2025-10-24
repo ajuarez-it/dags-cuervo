@@ -1,4 +1,5 @@
 from __future__ import annotations
+import pendulum
 from airflow import DAG
 from datetime import timedelta, datetime
 from utilidades_qlikflow import qlikflow_utils
