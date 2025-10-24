@@ -134,4 +134,4 @@ with DAG(
             **default_cloudrun_args,
         )
 
-start >> TG_ingest >> TG_bronze >> TG_silver >> TG_gold >> end 
+start >> TG_ingest >> TG_bronze >> TG_silver >> TG_gold >> end

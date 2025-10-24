@@ -114,4 +114,4 @@ with DAG(
     # ---
     # 5. Task Orchestration
     # ---
-    start >> TG_bronze >> TG_silver >> TG_gold >> end 
+    start >> TG_bronze >> TG_silver >> TG_gold >> end
