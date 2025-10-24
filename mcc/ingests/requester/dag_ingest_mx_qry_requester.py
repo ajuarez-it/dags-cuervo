@@ -12,7 +12,7 @@ from utils import get_current_filename_base
 
 DAG_NAME = get_current_filename_base() # get the filename
 
-MEXICO_TZ = pendulum.timezone("America/Mexico_City")
+LOCAL_TZ = pendulum.timezone("America/Mexico_City")
 
 # --- Configuration Variables ---
 CHILD_DAG_ID = "dag_ingest_mx_bi0pcustomer_staging"
@@ -21,7 +21,11 @@ BQ_DATASET_ID = "BRZ_MX_ONP_SAP_BW"
 BQ_TABLE_ID = "raw_bi0pcustomer"
 BASE_GCS_PATH = "gs://gcs-dwh-mx/staging/raw/sap/bw"
 XCOM_KEY = "create_external_table_sql" # Key for the SQL query in XCom
-
+START_DATE_LOCAL = (
+    pendulum.now(LOCAL_TZ)
+    .replace(hour=0, minute=0, second=0, microsecond=0)
+    .subtract(days=1)
+)
 
 # 1. Define the Python function to build the SQL
 def create_dynamic_sql(ti=None, **context):
@@ -64,10 +68,10 @@ def create_dynamic_sql(ti=None, **context):
 
 with DAG(
     dag_id=DAG_NAME,
-    start_date=pendulum.datetime(2025, 10, 1, tz=pendulum.timezone("America/Mexico_City")),
+    start_date=START_DATE_LOCAL,
     schedule=None,
-    catchup=False,
     tags=["MCC", "INGEST", "BRONZE", "BI0PCUSTOMER", "MX", "CATALOG"],
+    catchup=False,
 ) as dag:
     
     # This task now triggers the child DAG AND waits for it to complete.

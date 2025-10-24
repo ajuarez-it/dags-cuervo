@@ -18,6 +18,11 @@ GCP_CONN_ID = "google_cloud_default"  # Your Airflow connection ID for Google Cl
 JOB_NAME = "dbt-cuervo"
 DAG_NAME = Path(__file__).stem
 LOCAL_TZ = pendulum.timezone("America/Mexico_City")
+START_DATE_LOCAL = (
+    pendulum.now(LOCAL_TZ)
+    .replace(hour=0, minute=0, second=0, microsecond=0)
+    .subtract(days=1)
+)
 # ---
 # 2. DAG Definition
 # ---
@@ -25,8 +30,7 @@ default_args = {
     'owner': 'Miguel Dieguillo', 
     'retries': 0, 
     'maintainer': 'Aaron Juarez',
-    "start_date": datetime(2023, 1, 1, 0, 0, tzinfo=LOCAL_TZ),
-    "catchup": False,
+    "start_date": START_DATE_LOCAL,
     }
     
 with DAG(
@@ -34,6 +38,7 @@ with DAG(
     schedule_interval="15 4 * * *",
     default_args=default_args,
     tags=["MCC", "SELL_OUT", "SILVER", "GOLD"],
+    catchup=False,
     description="A DAG to trigger sell_out Workflow with BigQuery, and Cloud Run jobs.",
 ) as dag:
     # ---

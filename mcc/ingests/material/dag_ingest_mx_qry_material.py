@@ -12,7 +12,12 @@ from utils import get_current_filename_base
 
 DAG_NAME = get_current_filename_base() # get the filename
 
-MEXICO_TZ = pendulum.timezone("America/Mexico_City")
+LOCAL_TZ = pendulum.timezone("America/Mexico_City")
+START_DATE_LOCAL = (
+    pendulum.now(LOCAL_TZ)
+    .replace(hour=0, minute=0, second=0, microsecond=0)
+    .subtract(days=1)
+)
 
 # --- Configuration Variables ---
 INGEST_DAG_ID = "dag_ingest_mx_qlik_material"
@@ -64,7 +69,7 @@ def create_dynamic_sql(ti=None, **context):
 
 with DAG(
     dag_id=DAG_NAME,
-    start_date=pendulum.datetime(2025, 10, 1, tz=pendulum.timezone("America/Mexico_City")),
+    start_date=START_DATE_LOCAL,
     schedule=None,
     catchup=False,
     tags=["MCC", "INGEST", "BRONZE", "BI0PCUSTOMER", "MX", "CATALOG"],

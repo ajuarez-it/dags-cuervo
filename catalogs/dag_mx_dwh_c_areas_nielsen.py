@@ -7,6 +7,12 @@ from airflow.utils.task_group import TaskGroup
 from airflow.utils.dates import days_ago
 from sources import get_freshness_sources
 
+LOCAL_TZ = pendulum.timezone("America/Mexico_City")
+START_DATE_LOCAL = (
+    pendulum.now(LOCAL_TZ)
+    .replace(hour=0, minute=0, second=0, microsecond=0)
+    .subtract(days=1)
+)
 # ---
 # 1. Environment variables and constants
 # ---
@@ -21,10 +27,10 @@ DAG_NAME = Path(__file__).stem
 # ---
 with DAG(
     dag_id=DAG_NAME,
-    start_date=days_ago(1),
+    start_date=START_DATE_LOCAL,
     schedule_interval=None,
-    catchup=False,
     tags=["MCC", "AREAS_NIELSEN", "SILVER", "GOLD"],
+    catchup=False,
     description="A DAG to trigger areas_nielsen Workflow with BigQuery, and Cloud Run jobs.",
 ) as dag:
     default_cloudrun_args = {

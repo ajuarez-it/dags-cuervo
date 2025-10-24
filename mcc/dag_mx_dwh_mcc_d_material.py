@@ -21,7 +21,11 @@ GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 GCP_CONN_ID = "google_cloud_default" # Your Airflow connection ID for Google Cloud
 JOB_NAME = "dbt-cuervo"
 LOCAL_TZ = pendulum.timezone("America/Mexico_City")
-
+START_DATE_LOCAL = (
+    pendulum.now(LOCAL_TZ)
+    .replace(hour=0, minute=0, second=0, microsecond=0)
+    .subtract(days=1)
+)
 # ---
 # 2. DAG Definition
 # ---
@@ -29,8 +33,7 @@ default_args = {
     'owner': 'Miguel Dieguillo', 
     'retries': 0, 
     'maintainer': 'Aaron Juarez',
-    "start_date": datetime(2023, 1, 1, 0, 0, tzinfo=LOCAL_TZ),
-    "catchup": False,
+    "start_date": START_DATE_LOCAL,
     }
 
 with DAG(
@@ -38,6 +41,7 @@ with DAG(
     schedule_interval="30 11,23 * * *",
     default_args=default_args,
     tags=["MCC", "MATERIAL", "SILVER", "GOLD"],
+    catchup=False,
     description="A DAG to transform data from silver to gold",
 ) as dag:
     default_cloudrun_args = {
