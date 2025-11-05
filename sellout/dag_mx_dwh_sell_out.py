@@ -85,7 +85,7 @@ with DAG(
             **default_cloudrun_args,
         )
         
-    with TaskGroup("Real Metrics", default_args={'pool': 'emetrix'}) as TG_real_metrics:
+    with TaskGroup("Real_Metrics", default_args={'pool': 'emetrix'}) as TG_real_metrics:
         f_rotation_real_metrics = CloudRunExecuteJobOperator(
         task_id="f_rotation_real_metrics",
         overrides={
