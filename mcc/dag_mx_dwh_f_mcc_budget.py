@@ -89,7 +89,7 @@ with DAG(
                         "args": [
                             "build",
                             "--select",
-                            "staging.budget"
+                            "staging.commercial.mcc.budget"
                         ],
                     }
                 ],
@@ -107,7 +107,7 @@ with DAG(
                         "args": [
                             "build",
                             "--select",
-                            "marts.commercial.f_mcc_budget"
+                            "marts.commercial.mcc.f_mcc_budget"
                         ],
                     }
                 ],

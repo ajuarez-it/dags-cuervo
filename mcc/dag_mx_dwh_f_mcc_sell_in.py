@@ -86,7 +86,7 @@ with DAG(
                         "args": [
                             "build",
                             "--select",
-                            "staging.sell_in"
+                            "staging.commercial.mcc.sell_in"
                         ],
                     }
                 ],
@@ -104,7 +104,7 @@ with DAG(
                         "args": [
                             "build",
                             "--select",
-                            "marts.commercial.f_mcc_sell_in"
+                            "marts.commercial.mcc.f_mcc_sell_in"
                         ],
                     }
                 ],

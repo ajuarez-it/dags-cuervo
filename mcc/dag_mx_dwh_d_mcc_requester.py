@@ -14,12 +14,12 @@ from sources import get_freshness_sources
 # ---
 # It's best practice to store sensitive IDs and configurations in Airflow Variables or a secret backend
 
-DAG_NAME = Path(__file__).stem
-INGEST_DAG_ID = "dag_ingest_mx_qlik_material"
+INGEST_DAG_ID = "dag_ingest_mx_qlik_requester"
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "cc-data-analytics-prd")
 GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 GCP_CONN_ID = "google_cloud_default" # Your Airflow connection ID for Google Cloud
 JOB_NAME = "dbt-cuervo"
+DAG_NAME = Path(__file__).stem
 LOCAL_TZ = pendulum.timezone("America/Mexico_City")
 START_DATE_LOCAL = (
     pendulum.now(LOCAL_TZ)
@@ -38,9 +38,9 @@ default_args = {
 
 with DAG(
     dag_id=DAG_NAME,
-    schedule_interval="30 11,23 * * *",
+    schedule="40 11,23 * * *",
     default_args=default_args,
-    tags=["MCC", "MATERIAL", "SILVER", "GOLD"],
+    tags=["MCC", "REQUESTER", "SILVER", "GOLD"],
     catchup=False,
     description="A DAG to transform data from silver to gold",
 ) as dag:
@@ -52,21 +52,27 @@ with DAG(
         "retries": 0,
     }
     bronze_sources = [
-        "BRZ_MX_ONP_SAP_BW.raw_bi0tdivision",
-        "BRZ_MX_ONP_SAP_BW.raw_bi0textmatlgrp",
-        "BRZ_MX_ONP_SAP_BW.raw_bi0tmaterial",
-        "BRZ_MX_ONP_SAP_BW.raw_bi0tmat_kondm",
-        "BRZ_MX_ONP_SAP_BW.raw_bi0tmatl_group",
-        "BRZ_MX_ONP_SAP_BW.raw_bi0tmatl_grp_3",
-        "BRZ_MX_ONC_SPO_INT.d_material_dummies",
-        "SAP_CDC_AECORSOFT.mvke",
-        "BRZ_MX_ONP_SAP_BW.raw_bictzmm_zcate",
-        "BRZ_MX_ONP_SAP_BW.raw_tzmm_zcatg",
-        "BRZ_MX_ONP_SAP_BW.raw_bi0pmaterial"
+    "BRZ_MX_ONP_SAP_BW.raw_bi0pcustomer",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tcust_group",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tdistr_chan",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tcustomer",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tregion",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tsales_dist",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tsales_grp",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tsales_off",
+    "BRZ_MX_ONP_SAP_BW.raw_bictzctetds",
+    "BRZ_MX_ONP_SAP_BW.raw_bictzdircom",
+    "BRZ_MX_ONP_SAP_BW.raw_bictzsgmntcts",
+    "BRZ_MX_ONC_SPO_INT.layoutmcc",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tcust_grp2",
+    "BRZ_MX_ONP_SAP_BW.raw_bi0tcust_grp5",
+    "BRZ_MX_ONC_SPO_INT.d01_2_solicitante_dummie",
+    "BRZ_MX_ONC_SPO_INT.d_areasnielsen",
     ]
 
     start = EmptyOperator(task_id="start")
     end = EmptyOperator(task_id="end")
+
     with TaskGroup("Ingest", default_args={'pool': 'emetrix'}) as TG_ingest:
 
         trigger_and_wait_for_staging_dag = TriggerDagRunOperator(
@@ -85,7 +91,7 @@ with DAG(
 
     with TaskGroup("Bronze", default_args={'pool': 'emetrix'}) as TG_bronze:
         # 2. Create a single operator instance instead of looping
-        trigger_cloud_run_job_freshness_bronze_material = CloudRunExecuteJobOperator(
+        trigger_cloud_run_job_freshness_bronze_requester = CloudRunExecuteJobOperator(
             task_id="trigger_cloud_run_job_freshness_bronze_sources",
             overrides={
                 "container_overrides": [
@@ -102,17 +108,17 @@ with DAG(
             doc_md="Triggers a single Cloud Run job for all bronze source freshness checks.",
             **default_cloudrun_args,
         )
-
+                
     with TaskGroup("Silver", default_args={'pool': 'emetrix'}) as TG_silver:
-        trigger_cloud_run_job_build_silver_material = CloudRunExecuteJobOperator(
-            task_id="material_silver",
+        trigger_cloud_run_job_build_silver_requester = CloudRunExecuteJobOperator(
+            task_id="requester_silver",
             overrides={
                 "container_overrides": [
                     {
                         "args": [
                             "build",
                             "--select",
-                            "staging.material"
+                            "staging.commercial.mcc.requester"
                         ],
                     }
                 ],
@@ -120,16 +126,17 @@ with DAG(
             doc_md="Triggers a Cloud Run job to run and then test the silver layer",
             **default_cloudrun_args,
         )
+
     with TaskGroup("Gold", default_args={'pool': 'emetrix'}) as TG_gold:
-        trigger_cloud_run_job_build_gold_material = CloudRunExecuteJobOperator(
-            task_id="material_gold",
+        trigger_cloud_run_job_build_gold_requester = CloudRunExecuteJobOperator(
+            task_id="requester_gold",
             overrides={
                 "container_overrides": [
                     {
                         "args": [
                             "build",
                             "--select",
-                            "marts.commercial.d_mcc_material"
+                            "marts.commercial.mcc.d_mcc_requester"
                         ],
                     }
                 ],
@@ -137,5 +144,4 @@ with DAG(
             doc_md="Triggers a Cloud Run job to run and then test the gold layer",
             **default_cloudrun_args,
         )
-
 start >> TG_ingest >> TG_bronze >> TG_silver >> TG_gold >> end
