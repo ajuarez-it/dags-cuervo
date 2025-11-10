@@ -90,7 +90,7 @@ with DAG(
                             "build",
                             "--select",
                             "staging.commercial.mcc.sell_out",
-                            f"{warn_error}"
+                            warn_error
                         ],
                     }
                 ],
@@ -109,7 +109,7 @@ with DAG(
                             "build",
                             "--select",
                             "marts.commercial.mcc.f_mcc_sell_out",
-                            f"{warn_error}"
+                            warn_error
                         ],
                     }
                 ],
