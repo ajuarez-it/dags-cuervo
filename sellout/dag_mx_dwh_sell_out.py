@@ -6,7 +6,7 @@ from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
-from sources import get_freshness_sources
+from sources import get_freshness_sources, warn_error
 
 # ---
 # 1. Environment variables and constants
@@ -95,7 +95,9 @@ with DAG(
                     "args": [
                         "build",
                         "--select",
-                        "+f_rotation_real_metrics"
+                        "+f_rotation_real_metrics",
+                        "--warn-error-options",
+                        warn_error
                     ],
                 }
             ],
@@ -111,7 +113,9 @@ with DAG(
                     "args": [
                         "build",
                         "--select",
-                        "+f_inventory_real_metrics"
+                        "+f_inventory_real_metrics",
+                        "--warn-error-options",
+                        warn_error
                     ],
                 }
             ],
@@ -130,7 +134,9 @@ with DAG(
                             "args": [
                                 "build",
                                 "--select",
-                                "+d_materials_hierarchy"
+                                "+d_materials_hierarchy",
+                                "--warn-error-options",
+                                warn_error
                             ],
                         }
                     ],
@@ -151,6 +157,8 @@ with DAG(
                                 "--exclude",
                                 "+d_mcc_requester",
                                 "+f_rotation_real_metrics"
+                                "--warn-error-options",
+                                warn_error
                             ],
                         }
                     ],
@@ -168,6 +176,8 @@ with DAG(
                                 "build",
                                 "--select",
                                 "+f_sell_out_budget_source"
+                                "--warn-error-options",
+                                warn_error
                             ],
                         }
                     ],
@@ -189,7 +199,9 @@ with DAG(
                                 "+d_mcc_requester", 
                                 "+d_materials_hierarchy", 
                                 "+f_sell_out_budget_source", 
-                                "+d_sell_out_all_customers_chain"
+                                "+d_sell_out_all_customers_chain",
+                                "--warn-error-options",
+                                warn_error
                             ],
                         }
                     ],
@@ -211,7 +223,9 @@ with DAG(
                                 "+d_sell_out_update_date_ym",
                                 "--exclude",
                                 "+d_mcc_requester",
-                                "+f_rotation_real_metrics"
+                                "+f_rotation_real_metrics",
+                                "--warn-error-options",
+                                warn_error
                             ],
                         }
                     ],
@@ -228,7 +242,9 @@ with DAG(
                             "args": [
                                 "build",
                                 "--select",
-                                "+d_sell_out_sub_channels"
+                                "+d_sell_out_sub_channels",
+                                "--warn-error-options",
+                                warn_error
                             ],
                         }
                     ],
@@ -248,7 +264,9 @@ with DAG(
                                 "+d_sell_out_update_date",
                                 "--exclude",
                                 "+d_mcc_requester", 
-                                "+f_rotation_real_metrics"
+                                "+f_rotation_real_metrics",
+                                "--warn-error-options",
+                                warn_error
                             ],
                         }
                     ],
@@ -265,7 +283,9 @@ with DAG(
                             "args": [
                                 "build",
                                 "--select",
-                                "+d_sell_out_relationship_chain"
+                                "+d_sell_out_relationship_chain",
+                                "--warn-error-options",
+                                warn_error
                             ],
                         }
                     ],
@@ -292,7 +312,9 @@ with DAG(
                             "+d_sell_out_update_date", 
                             "+d_sell_out_update_date_ym",
                             "+f_inventory_real_metrics",
-                            "+d_sell_out_sub_channels"
+                            "+d_sell_out_sub_channels",
+                            "--warn-error-options",
+                            warn_error
                         ],
                     }
                 ],
@@ -316,7 +338,9 @@ with DAG(
                             "+d_sell_out_update_date_ym", 
                             "+d_sell_out_update_date",
                             "+d_sell_out_relationship_chain", 
-                            "+d_sell_out_sub_channels"
+                            "+d_sell_out_sub_channels",
+                            "--warn-error-options",
+                            warn_error
                         ],
                     }
                 ],
@@ -335,7 +359,9 @@ with DAG(
                         "args": [
                             "build",
                             "--select",
-                            "f_sell_out_real_metrics_validation"
+                            "f_sell_out_real_metrics_validation",
+                            "--warn-error-options",
+                            warn_error
                         ],
                     }
                 ],

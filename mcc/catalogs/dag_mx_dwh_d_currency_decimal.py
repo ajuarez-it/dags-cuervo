@@ -6,7 +6,7 @@ from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.dates import days_ago
-from sources import get_freshness_sources
+from sources import get_freshness_sources, warn_error
 
 # ---
 LOCAL_TZ = pendulum.timezone("America/Mexico_City")
@@ -76,7 +76,9 @@ with DAG(
                         "args": [
                             "build",
                             "--select",
-                            "staging.currency_decimal"
+                            "staging.currency_decimal",
+                            "--warn-error-options",
+                            warn_error
                         ],
                     }
                 ],
@@ -94,7 +96,9 @@ with DAG(
                         "args": [
                             "build",
                             "--select",
-                            "marts.reports.r_currency_decimal"
+                            "marts.reports.r_currency_decimal",
+                            "--warn-error-options",
+                            warn_error
                         ],
                     }
                 ],

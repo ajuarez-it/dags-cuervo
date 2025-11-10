@@ -6,7 +6,7 @@ from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator # Import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup
-from sources import get_freshness_sources
+from sources import get_freshness_sources, warn_error
 
 # ---
 # 1. Environment variables and constants
@@ -87,7 +87,9 @@ with DAG(
                         "args": [
                             "build",
                             "--select",
-                            "staging.commercial.mcc.portfolio"
+                            "staging.commercial.mcc.portfolio",
+                            "--warn-error-options",
+                            warn_error
                         ],
                     }
                 ],
@@ -105,7 +107,9 @@ with DAG(
                         "args": [
                             "build",
                             "--select",
-                            "marts.commercial.mcc.f_mcc_portfolio"
+                            "marts.commercial.mcc.f_mcc_portfolio",
+                            "--warn-error-options",
+                            warn_error
                         ],
                     }
                 ],

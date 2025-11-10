@@ -6,8 +6,8 @@ from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup 
-from sources import get_freshness_sources
-warn_error = "{'error': ['NoNodesForSelectionCriteria']}"
+from sources import get_freshness_sources, warn_error
+
 # ---
 # 1. Environment variables and constants
 # ---
