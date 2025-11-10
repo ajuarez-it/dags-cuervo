@@ -7,7 +7,7 @@ from airflow.operators.empty import EmptyOperator
 from airflow.providers.google.cloud.operators.cloud_run import CloudRunExecuteJobOperator
 from airflow.utils.task_group import TaskGroup 
 from sources import get_freshness_sources
-warn_error = '--warn-error-options "{"error": ["NoNodesForSelectionCriteria"]}"'
+warn_error = "{'error': ['NoNodesForSelectionCriteria']}"
 # ---
 # 1. Environment variables and constants
 # ---
@@ -90,6 +90,7 @@ with DAG(
                             "build",
                             "--select",
                             "staging.commercial.mcc.sell_out",
+                            "--warn-error-options",
                             warn_error
                         ],
                     }
@@ -109,6 +110,7 @@ with DAG(
                             "build",
                             "--select",
                             "marts.commercial.mcc.f_mcc_sell_out",
+                            "--warn-error-options",
                             warn_error
                         ],
                     }
