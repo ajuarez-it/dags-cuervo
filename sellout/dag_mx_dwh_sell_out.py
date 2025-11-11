@@ -86,16 +86,16 @@ with DAG(
             **default_cloudrun_args,
         )
         
-    with TaskGroup("Real_Metrics", default_args={'pool': 'emetrix'}) as TG_real_metrics:
-        f_rotation_real_metrics = CloudRunExecuteJobOperator(
-        task_id="f_rotation_real_metrics",
+    with TaskGroup("Real_Metrics_Sources", default_args={'pool': 'emetrix'}) as TG_real_metrics:
+        f_sell_out_rotation_real_metrics_source = CloudRunExecuteJobOperator(
+        task_id="f_sell_out_rotation_real_metrics_source",
         overrides={
             "container_overrides": [
                 {
                     "args": [
                         "build",
                         "--select",
-                        "+f_rotation_real_metrics",
+                        "+f_sell_out_rotation_real_metrics_source",
                         "--warn-error-options",
                         warn_error
                     ],
@@ -105,15 +105,15 @@ with DAG(
         doc_md="Triggers a Cloud Run job to run and then test the silver layer",
         **default_cloudrun_args,
         )
-        f_inventory_real_metrics = CloudRunExecuteJobOperator(
-        task_id="f_inventory_real_metrics",
+        f_sell_out_inventory_real_metrics_source = CloudRunExecuteJobOperator(
+        task_id="f_sell_out_inventory_real_metrics_source",
         overrides={
             "container_overrides": [
                 {
                     "args": [
                         "build",
                         "--select",
-                        "+f_inventory_real_metrics",
+                        "+f_sell_out_inventory_real_metrics_source",
                         "--warn-error-options",
                         warn_error
                     ],
@@ -123,18 +123,18 @@ with DAG(
         doc_md="Triggers a Cloud Run job to run and then test the silver layer",
         **default_cloudrun_args,
         )
-        [f_rotation_real_metrics, f_inventory_real_metrics]
+        [f_sell_out_rotation_real_metrics_source, f_sell_out_inventory_real_metrics_source]
                 
     with TaskGroup("Budget", default_args={'pool': 'emetrix'}) as TG_budget:
-        d_materials_hierarchy = CloudRunExecuteJobOperator(
-                task_id="d_materials_hierarchy",
+        d_sell_out_materials_hierarchy = CloudRunExecuteJobOperator(
+                task_id="d_sell_out_materials_hierarchy",
                 overrides={
                     "container_overrides": [
                         {
                             "args": [
                                 "build",
                                 "--select",
-                                "+d_materials_hierarchy",
+                                "+d_sell_out_materials_hierarchy",
                                 "--warn-error-options",
                                 warn_error
                             ],
@@ -156,7 +156,7 @@ with DAG(
                                 "+d_sell_out_all_customers_chain",
                                 "--exclude",
                                 "+d_mcc_requester",
-                                "+f_rotation_real_metrics"
+                                "+f_sell_out_rotation_real_metrics_source"
                                 "--warn-error-options",
                                 warn_error
                             ],
@@ -186,19 +186,19 @@ with DAG(
                 **default_cloudrun_args,
             )
 
-        f_sell_out_budget_destination = CloudRunExecuteJobOperator(
-                task_id="f_sell_out_budget_destination",
+        f_sell_out_budget = CloudRunExecuteJobOperator(
+                task_id="f_sell_out_budget",
                 overrides={
                     "container_overrides": [
                         {
                             "args": [
                                 "build",
                                 "--select",
-                                "+f_sell_out_budget_destination",
+                                "+f_sell_out_budget",
                                 "--exclude",
-                                "+d_mcc_requester", 
-                                "+d_materials_hierarchy", 
-                                "+f_sell_out_budget_source", 
+                                "+d_mcc_requester",
+                                "+d_sell_out_materials_hierarchy",
+                                "+f_sell_out_budget_source",
                                 "+d_sell_out_all_customers_chain",
                                 "--warn-error-options",
                                 warn_error
@@ -209,9 +209,9 @@ with DAG(
                 doc_md="Triggers a Cloud Run job to run and then test the silver layer",
                 **default_cloudrun_args,
             )
-        [d_materials_hierarchy, d_sell_out_all_customers_chain, f_sell_out_budget_source] >> f_sell_out_budget_destination
+        [d_sell_out_materials_hierarchy, d_sell_out_all_customers_chain, f_sell_out_budget_source] >> f_sell_out_budget
 
-    with TaskGroup("Relationship", default_args={'pool': 'emetrix'}) as TG_relationship:
+    with TaskGroup("Dates", default_args={'pool': 'emetrix'}) as TG_dates:
         d_sell_out_update_date_ym = CloudRunExecuteJobOperator(
                 task_id="d_sell_out_update_date_ym",
                 overrides={
@@ -223,7 +223,7 @@ with DAG(
                                 "+d_sell_out_update_date_ym",
                                 "--exclude",
                                 "+d_mcc_requester",
-                                "+f_rotation_real_metrics",
+                                "+f_sell_out_rotation_real_metrics_source",
                                 "--warn-error-options",
                                 warn_error
                             ],
@@ -264,7 +264,7 @@ with DAG(
                                 "+d_sell_out_update_date",
                                 "--exclude",
                                 "+d_mcc_requester", 
-                                "+f_rotation_real_metrics",
+                                "+f_sell_out_rotation_real_metrics_source",
                                 "--warn-error-options",
                                 warn_error
                             ],
@@ -307,11 +307,10 @@ with DAG(
                             "--select",
                             "+f_sell_out_inventory_real_metrics",
                             "--exclude",
-                            "+d_mcc_requester", 
                             "+d_sell_out_relationship_chain",
                             "+d_sell_out_update_date", 
                             "+d_sell_out_update_date_ym",
-                            "+f_inventory_real_metrics",
+                            "+f_sell_out_inventory_real_metrics_source",
                             "+d_sell_out_sub_channels",
                             "--warn-error-options",
                             warn_error
@@ -333,8 +332,7 @@ with DAG(
                             "--select",
                             "+f_sell_out_rotation_real_metrics",
                             "--exclude",
-                            "+d_mcc_requester", 
-                            "+f_sell_out_budget_destination", 
+                            "+f_sell_out_budget", 
                             "+d_sell_out_update_date_ym", 
                             "+d_sell_out_update_date",
                             "+d_sell_out_relationship_chain", 
@@ -369,4 +367,4 @@ with DAG(
             doc_md="Triggers a Cloud Run job to run and then test the gold layer",
             **default_cloudrun_args,
         )
-start >> TG_bronze >> TG_real_metrics >> TG_budget >> TG_relationship >> TG_sellout >> TG_validation >> end
+start >> TG_bronze >> TG_real_metrics >> TG_budget >> TG_dates >> TG_sellout >> TG_validation >> end

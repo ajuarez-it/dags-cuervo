@@ -55,7 +55,9 @@ with DAG(
                         "args": [
                             "build",
                             "--select",
-                            "staging.staging.calendar"
+                            "staging.staging.calendar",
+                            "--warn-error-options",
+                            warn_error
                         ],
                     }
                 ],
@@ -73,7 +75,9 @@ with DAG(
                         "args": [
                             "build",
                             "--select",
-                            "dbt_cuervo.GLD_GLOBAL_MASTER_REPORT.r_calendar"
+                            "dbt_cuervo.GLD_GLOBAL_MASTER_REPORT.r_calendar",
+                            "--warn-error-options",
+                            warn_error
                         ],
                     }
                 ],
