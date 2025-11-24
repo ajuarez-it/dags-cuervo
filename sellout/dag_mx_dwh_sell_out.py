@@ -37,8 +37,7 @@ default_args = {
 
 with DAG(
     dag_id=DAG_NAME,
-    schedule="30 1 * * *",
-    schedule_interval=None,
+    schedule_interval="30 1 * * *",
     default_args=default_args,
     tags=["SELLOUT", "MAIN"],
     catchup=False,
