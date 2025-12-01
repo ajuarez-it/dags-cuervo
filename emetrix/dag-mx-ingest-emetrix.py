@@ -172,6 +172,7 @@ LIST_TABLES = [
             'valor3', 
             'valor4', 
             'valor5',
+            'valor6',
             'orden'
         ]
     ],
@@ -998,7 +999,7 @@ with DAG(
     end = DummyOperator(task_id='end')
 
     # Iteracion de las tablas
-    with TaskGroup(group_id='tbl_group_dataflow', default_args={'pool': 'emetrix_dataflow'}) as tbl_group_dataflow:
+    with TaskGroup(group_id='tbl_group_dataflow', default_args={'pool': 'emetrix'}) as tbl_group_dataflow:
         for tbl_data in LIST_TABLES:
             if tbl_data[2] == 'FULL' and tbl_data[3] == 'ENABLED':
                 SQL_QUERY = ' '.join(tbl_data[4].replace('\n',' ').split()) 
@@ -1077,7 +1078,7 @@ with DAG(
                 )
                 mysql_hash_to_bq >> comparation_from_bq >> compactation_query
 
-    with TaskGroup(group_id='tbl_group_delta', default_args={'pool': 'emetrix_dataflow'}) as tbl_group_time_delta:
+    with TaskGroup(group_id='tbl_group_delta', default_args={'pool': 'emetrix'}) as tbl_group_time_delta:
         for tbl_data in LIST_TABLES:
             if tbl_data[2] == 'TIME_DELTA' and tbl_data[3] == 'ENABLED':
                 SQL_QUERY = ' '.join(tbl_data[4].replace('\n',' ').split()) 
